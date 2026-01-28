@@ -1,4 +1,3 @@
-database.db
 -- 1. Tabella LOGOPEDISTA
 CREATE TABLE Logopedista (
     pIva VARCHAR(11) PRIMARY KEY,
