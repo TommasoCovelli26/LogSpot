@@ -21,11 +21,17 @@ export default function Page() {
       {/* Sezione di registrazione e i vantaggi per logopedisti e pazienti */}
       <h2 className="text-center text-3xl font-bold text-gray-800 mt-8">Registrati come...</h2>
       <section className="grid gap-4 md:grid-cols-2 text-center max-w-4xl w-full px-4">
-        <Link href="/registrazione-logopedista" className="p-4 border rounded-lg bg-gray-50 hover:bg-blue-100 transition-colors cursor-pointer">
+        <Link
+          href="/registrazione?ruolo=logopedista"
+          className="p-4 border rounded-lg bg-gray-50 hover:bg-blue-100 transition-colors cursor-pointer"
+        >
           <h3 className="font-bold text-blue-500">Logopedista</h3>
           <p className="text-sm">Gestisci i tuoi pazienti e crea attività personalizzate in pochi click.</p>
         </Link>
-        <Link href="/registrazione-paziente" className="p-4 border rounded-lg bg-gray-50 hover:bg-blue-100 transition-colors cursor-pointer">
+        <Link
+          href="/registrazione?ruolo=paziente"
+          className="p-4 border rounded-lg bg-gray-50 hover:bg-blue-100 transition-colors cursor-pointer"
+        >
           <h3 className="font-bold text-blue-500">Paziente</h3>
           <p className="text-sm">Accedi ai tuoi esercizi e segui il tuo percorso riabilitativo ovunque sei.</p>
         </Link>
