@@ -1,0 +1,86 @@
+import { db } from '@/lib/db';
+
+export interface ActivityWithFavorite {
+  cod: number;
+  titolo: string;
+  dataCreazione: string;
+  isFavorite: boolean;
+}
+
+export interface ActivityDetail {
+  cod: number;
+  titolo: string;
+  descrizione: string;
+  istruzioni: string;
+  immagine: string;
+  accessibilita: boolean;
+  fasciaEta: number;
+  patologie: string;
+  id_logopedista: string;
+}
+
+export async function fetchActivities(
+  userId: string, 
+  query: string = '', 
+  filter: string = 'recenti'
+): Promise<ActivityWithFavorite[]> {
+  try {
+    // Base query
+    let sql = `
+      SELECT 
+        A.cod, 
+        A.titolo, 
+        A.dataCreazione,
+        (CASE WHEN P.id_attivita IS NOT NULL THEN 1 ELSE 0 END) as isFavorite
+      FROM Attivita A
+      LEFT JOIN Preferiti P ON A.cod = P.id_attivita AND P.id_logopedista = ?
+      WHERE A.id_logopedista = ?
+    `;
+
+    const params: any[] = [userId, userId];
+
+    // Filtro Ricerca
+    if (query) {
+      sql += ` AND A.titolo LIKE ?`;
+      params.push(`%${query}%`);
+    }
+
+    // Filtro Tab (Preferiti)
+    if (filter === 'preferiti') {
+      sql += ` AND isFavorite = 1`;
+    }
+
+    sql += ` ORDER BY A.dataCreazione DESC`;
+
+    const stmt = db.prepare(sql);
+    const rows = stmt.all(...params) as any[];
+
+    return rows.map(row => ({
+      ...row,
+      isFavorite: Boolean(row.isFavorite)
+    }));
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Impossibile recuperare le attività.');
+  }
+}
+
+export async function fetchActivityById(id: string): Promise<ActivityDetail | null> {
+  try {
+    const stmt = db.prepare(`
+      SELECT * FROM Attivita WHERE cod = ?
+    `);
+    
+    const activity = stmt.get(id) as ActivityDetail | undefined;
+    
+    if (!activity) return null;
+
+    return {
+      ...activity,
+      accessibilita: Boolean(activity.accessibilita)
+    };
+  } catch (error) {
+    console.error('Database Error:', error);
+    return null;
+  }
+}

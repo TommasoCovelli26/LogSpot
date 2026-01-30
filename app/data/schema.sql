@@ -32,6 +32,8 @@ CREATE TABLE Attivita (
     istruzioni TEXT,
     immagine TEXT,
     accessibilita BOOLEAN DEFAULT 0,
+    fasciaEta INTEGER DEFAULT 0,
+    patologie TEXT,
     -- Relazione "Crea": ogni attività è creata da un logopedista (1:N)
     id_logopedista VARCHAR(11) NOT NULL,
     FOREIGN KEY (id_logopedista) REFERENCES Logopedista(pIva) ON DELETE CASCADE
