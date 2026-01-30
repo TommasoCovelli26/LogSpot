@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import NavLinks from './nav-links'; // Riferimento relativo alla stessa cartella
+import NavLinks from './nav-links'; // Riferimento relativo alla cartella pubblica
 import { lusitana } from '../fonts'; // Riferimento relativo alla cartella superiore (app/ui/fonts.ts)
 
 export default function SideNav() {
