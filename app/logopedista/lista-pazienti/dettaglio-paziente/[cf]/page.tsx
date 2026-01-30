@@ -4,6 +4,7 @@ import { formatDateToLocal } from '@/lib/utils';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import UnassignButton from '@/ui/logopedista/unassign-button';
+import PatientExercises from '@/ui/logopedista/paziente-esercizi';
 
 export default async function Page({ params }: { params: Promise<{ cf: string }> }) {
   const { cf } = await params;
@@ -34,13 +35,13 @@ export default async function Page({ params }: { params: Promise<{ cf: string }>
         </p>
         <p className="text-lg text-gray-600 font-mono mt-1">{patient.cf}</p>
         <div className="flex items-center gap-2 mt-2">
-          <span className="text-2xl">🎂</span>
+          <span className="text-xl">🎂</span>
           <p className="text-medium text-gray-600">
             {patient.dataNascita ? formatDateToLocal(patient.dataNascita) : 'Data non disponibile'}
           </p>
         </div>
         <div className="mt-4">
-          <p className="text-2xl font-semibold text-gray-900">Informazioni di Contatto</p>
+          <p className="text-xl font-semibold text-gray-900">Informazioni di Contatto</p>
           <div className="mt-2 space-y-1">
             <p className="text-xl text-gray-600">
               <span className="font-medium">Email:</span> {patient.email}
@@ -51,7 +52,9 @@ export default async function Page({ params }: { params: Promise<{ cf: string }>
           </div>
         </div>
       </div>
+      <PatientExercises cf={cf} pIva="12345678901" />
 
     </div>
+    
   );
 }
