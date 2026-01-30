@@ -1,77 +1,83 @@
 'use server';
 
-import { z } from 'zod';
+import Database from 'better-sqlite3';
+import path from 'path';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import postgres from 'postgres';
- 
-const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
- 
-const FormSchema = z.object({
-  id: z.string(),
-  customerId: z.string(),
-  amount: z.coerce.number(),
-  status: z.enum(['pending', 'paid']),
-  date: z.string(),
-});
- 
-const CreateInvoice = FormSchema.omit({ id: true, date: true });
 
- 
-export async function createInvoice(formData: FormData) {
-  const { customerId, amount, status } = CreateInvoice.parse({
-    customerId: formData.get('customerId'),
-    amount: formData.get('amount'),
-    status: formData.get('status'),
-  });
- 
-  const amountInCents = amount * 100;
-  const date = new Date().toISOString().split('T')[0];
- 
+// Percorso del database SQLite
+const dbPath = path.join(process.cwd(), 'app/data/database.db');
+
+// --- FUNZIONE PER I PREFERITI (Cuore) ---
+export async function toggleFavorite(activityId: number, isFavorite: boolean) {
+  const db = new Database(dbPath);
+  // ID fisso per demo (in produzione verrebbe dalla sessione)
+  const userId = '12345678901'; 
+
   try {
-    await sql`
-      INSERT INTO invoices (customer_id, amount, status, date)
-      VALUES (${customerId}, ${amountInCents}, ${status}, ${date})
-    `;
+    if (isFavorite) {
+      // Aggiunge ai preferiti
+      db.prepare(`
+        INSERT OR IGNORE INTO Preferiti (id_logopedista, id_attivita) 
+        VALUES (?, ?)
+      `).run(userId, activityId);
+    } else {
+      // Rimuove dai preferiti
+      db.prepare(`
+        DELETE FROM Preferiti 
+        WHERE id_logopedista = ? AND id_attivita = ?
+      `).run(userId, activityId);
+    }
+
+    // Aggiorna la cache per mostrare subito il cambiamento
+    revalidatePath('/logopedista/imieimateriali');
+    
   } catch (error) {
-    // We'll also log the error to the console for now
-    console.error(error);
-    return {
-      message: 'Database Error: Failed to Create Invoice.',
-    };
+    console.error('Errore aggiornamento preferiti:', error);
+    // Non blocchiamo l'interfaccia se fallisce il log, ma lo segnaliamo
+    throw new Error('Impossibile aggiornare i preferiti');
   }
- 
-  revalidatePath('/dashboard/invoices');
-  redirect('/dashboard/invoices');
 }
 
-export async function updateInvoice(id: string, formData: FormData) {
-  const { customerId, amount, status } = UpdateInvoice.parse({
-    customerId: formData.get('customerId'),
-    amount: formData.get('amount'),
-    status: formData.get('status'),
-  });
- 
-  const amountInCents = amount * 100;
- 
-  try {
-    await sql`
-        UPDATE invoices
-        SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
-        WHERE id = ${id}
-      `;
-  } catch (error) {
-    // We'll also log the error to the console for now
-    console.error(error);
-    return { message: 'Database Error: Failed to Update Invoice.' };
-  }
- 
-  revalidatePath('/dashboard/invoices');
-  redirect('/dashboard/invoices');
-}
+// --- FUNZIONE PER SALVARE NUOVA ATTIVITÀ ---
+export async function saveActivity(formData: any) {
+  const db = new Database(dbPath);
+  const userId = '12345678901'; 
 
-export async function deleteInvoice(id: string) { 
-  // Unreachable code block
-  await sql`DELETE FROM invoices WHERE id = ${id}`;
-  revalidatePath('/dashboard/invoices');
+  try {
+    const { 
+      titolo, 
+      descrizione, 
+      immagine,    // IMPORTANTE: Include la stringa degli allegati
+      obbiettivo, 
+      fasciaEta, 
+      patologie, 
+      accessibilita 
+    } = formData;
+
+    // Convertiamo l'array di patologie in stringa (es. "AFASIA,DISARTRIA")
+    const patologieString = Array.isArray(patologie) ? patologie.join(',') : patologie;
+
+    db.prepare(`
+      INSERT INTO Attivita (
+        titolo, descrizione, istruzioni, immagine, fasciaEta, patologie, accessibilita, id_logopedista
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      titolo, 
+      descrizione, 
+      obbiettivo,      
+      immagine,        
+      fasciaEta, 
+      patologieString, 
+      accessibilita ? 1 : 0, 
+      userId
+    );
+
+    // Aggiorna la lista dei materiali
+    revalidatePath('/logopedista/imieimateriali');
+    return { success: true, message: 'Attività salvata!' };
+
+  } catch (error) {
+    console.error('Errore salvataggio:', error);
+    return { success: false, message: 'Errore nel salvataggio' };
+  }
 }

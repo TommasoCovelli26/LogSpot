@@ -18,13 +18,13 @@ INSERT INTO Paziente VALUES
 ('NRIPAO04D04H501D', 'Neri', 'Paolo', '2013-01-19', '3404444444', 'paolo@mail.it', 'pass', '12345678904'),
 ('GLLSRA05E05H501E', 'Gallo', 'Sara', '2014-11-05', '3405555555', 'sara@mail.it', 'pass', '12345678905');
 
--- 3. ATTIVITA
-INSERT INTO Attivita (titolo, descrizione, istruzioni, immagine, accessibilita, id_logopedista) VALUES
-('Pronuncia vocali', 'Esercizio sulle vocali', 'Ripetere le vocali lentamente', 'vocali.jpg', 1, '12345678901'),
-('Articolazione consonanti', 'Allenamento consonanti', 'Pronunciare sillabe', 'consonanti.jpg', 1, '12345678902'),
-('Memoria verbale', 'Esercizi di memoria', 'Ripetere parole ascoltate', 'memoria.jpg', 0, '12345678903'),
-('Comprensione frasi', 'Ascolto e comprensione', 'Rispondere alle domande', 'frasi.jpg', 1, '12345678904'),
-('Fluenza verbale', 'Migliorare fluidità', 'Parlare per 1 minuto', 'fluenza.jpg', 0, '12345678905');
+-- 3. ATTIVITA 
+INSERT INTO Attivita (titolo, descrizione, istruzioni, immagine, accessibilita, fasciaEta, patologie, id_logopedista) VALUES
+('Pronuncia vocali', 'Esercizio base sulle vocali', 'Ripetere le vocali lentamente ad alta voce', 'vocali.jpg', 1, 4, 'DISLALIA,RITARDO LINGUAGGIO', '12345678901'),
+('Articolazione consonanti', 'Allenamento gruppi consonantici', 'Pronunciare sillabe scandendo bene', 'consonanti.jpg', 1, 6, 'DISARTRIA', '12345678901'),
+('Memoria verbale', 'Esercizi di memoria a breve termine', 'Ascolta la lista e ripeti le parole', 'memoria.jpg', 0, 10, 'AFASIA,ANOMIA', '12345678901'),
+('Comprensione frasi', 'Ascolto e comprensione sintattica', 'Rispondere alle domande di controllo', 'frasi.jpg', 1, 8, 'DSL', '12345678901'),
+('Fluenza verbale', 'Generazione parole per categoria', 'Dire il massimo numero di parole in 1 minuto', 'fluenza.jpg', 0, 12, 'AFASIA,BALBUZIE', '12345678901');
 
 -- 4. MATERIALE
 INSERT INTO Materiale (tipo, immagine, domanda, risposta, rispFalsa, id_attivita) VALUES
