@@ -1,7 +1,13 @@
+'use client';
+
 import { Patient } from '@/lib/patients';
 import { formatDateToLocal } from '@/lib/utils';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function PatientsTable({ patients }: { patients: any[] }) {
+  const router = useRouter();
+
   if (!patients || patients.length === 0) {
     return (
       <div className="mt-6 text-center py-10">
@@ -10,6 +16,10 @@ export default function PatientsTable({ patients }: { patients: any[] }) {
     );
   }
 
+  const handleRowClick = (cf: string) => {
+    router.push(`/logopedista/lista-pazienti/dettaglio-paziente/${cf}`);
+  };
+
   return (
     <div className="mt-6 flow-root">
       <div className="inline-block min-w-full align-middle">
@@ -17,32 +27,36 @@ export default function PatientsTable({ patients }: { patients: any[] }) {
           {/* Mobile view */}
           <div className="md:hidden">
             {patients.map((patient: any) => (
-              <div
+              <Link
                 key={patient.cf}
-                className="mb-2 w-full rounded-md bg-white p-4"
+                href={`/logopedista/lista-pazienti/dettaglio-paziente/${patient.cf}`}
               >
-                <div className="flex items-center justify-between border-b pb-4">
-                  <div>
-                    <div className="mb-2 flex items-center">
-                      <p className="font-medium">{patient.nome} {patient.cognome}</p>
+                <div
+                  className="mb-2 w-full rounded-md bg-white p-4 cursor-pointer hover:bg-gray-50"
+                >
+                  <div className="flex items-center justify-between border-b pb-4">
+                    <div>
+                      <div className="mb-2 flex items-center">
+                        <p className="font-medium">{patient.nome} {patient.cognome}</p>
+                      </div>
+                      <p className="text-sm text-gray-500">{patient.email}</p>
                     </div>
-                    <p className="text-sm text-gray-500">{patient.email}</p>
+                  </div>
+                  <div className="flex w-full items-center justify-between pt-4">
+                    <div>
+                      <p className="text-sm font-medium">CF: {patient.cf}</p>
+                      {patient.numTelefono && (
+                        <p className="text-sm text-gray-500">{patient.numTelefono}</p>
+                      )}
+                      {patient.dataNascita && (
+                        <p className="text-sm text-gray-500">
+                          {formatDateToLocal(patient.dataNascita)}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="flex w-full items-center justify-between pt-4">
-                  <div>
-                    <p className="text-sm font-medium">CF: {patient.cf}</p>
-                    {patient.numTelefono && (
-                      <p className="text-sm text-gray-500">{patient.numTelefono}</p>
-                    )}
-                    {patient.dataNascita && (
-                      <p className="text-sm text-gray-500">
-                        {formatDateToLocal(patient.dataNascita)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
+              </Link>
             ))}
           </div>
 
@@ -74,7 +88,8 @@ export default function PatientsTable({ patients }: { patients: any[] }) {
               {patients.map((patient: any) => (
                 <tr
                   key={patient.cf}
-                  className="w-full border-b py-3 text-sm last-of-type:border-none [&:first-child>td:first-child]:rounded-tl-lg [&:first-child>td:last-child]:rounded-tr-lg [&:last-child>td:first-child]:rounded-bl-lg [&:last-child>td:last-child]:rounded-br-lg"
+                  className="w-full border-b py-3 text-sm last-of-type:border-none [&:first-child>td:first-child]:rounded-tl-lg [&:first-child>td:last-child]:rounded-tr-lg [&:last-child>td:first-child]:rounded-bl-lg [&:last-child>td:last-child]:rounded-br-lg hover:bg-gray-100 cursor-pointer"
+                  onClick={() => handleRowClick(patient.cf)}
                 >
                   <td className="whitespace-nowrap py-3 pl-6 pr-3">
                     {patient.cognome}

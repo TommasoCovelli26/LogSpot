@@ -3,6 +3,6 @@ import path from 'path';
 
 const dbPath = path.join(process.cwd(), 'app', 'data', 'database.db');
 
-export const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+export const db = new Database(dbPath, { readonly: false, fileMustExist: true });
 
 export default db;

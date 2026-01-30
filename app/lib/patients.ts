@@ -51,3 +51,30 @@ export async function fetchPatientsByCf(cf: string): Promise<Patient | null> {
     throw error;
   }
 }
+
+export async function fetchUnassignedPatients(query?: string): Promise<Patient[]> {
+  try {
+    let sql = `
+      SELECT cf, nome, cognome, email, numTelefono, dataNascita
+      FROM Paziente
+      WHERE id_logopedista IS NULL
+    `;
+    const params: any[] = [];
+
+    if (query && query.trim()) {
+      sql += ` AND (LOWER(cf) LIKE LOWER(?) OR LOWER(nome) LIKE LOWER(?) OR LOWER(cognome) LIKE LOWER(?))`;
+      const searchTerm = `%${query}%`;
+      params.push(searchTerm, searchTerm, searchTerm);
+    }
+
+    sql += ` ORDER BY cognome ASC, nome ASC`;
+
+    const stmt = db.prepare(sql);
+    const patients = stmt.all(...params) as Patient[];
+    console.log('fetchUnassignedPatients - Query:', sql, 'Params:', params, 'Results count:', patients.length);
+    return patients;
+  } catch (error) {
+    console.error('Error fetching unassigned patients:', error);
+    throw error;
+  }
+}
