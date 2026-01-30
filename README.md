@@ -1,5 +1,17 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Install Dependencies
+
+Use this command line in the project folder
+
+```bash
+npm install 
+
+npm install better-sqlite3 
+
+npm install -D @types/better-sqlite3 ts-node
+```
+
 ## Getting Started
 
 First, run the development server:
