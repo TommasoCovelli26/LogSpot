@@ -28,7 +28,16 @@ export default function LoginPage() {
       }
 
       // Login riuscito → vai alla dashboard
+      const data = await res.json();
+      localStorage.setItem(
+        "utente",
+        JSON.stringify({
+          email: data.utente.email,
+          ruolo: data.ruolo,
+        })
+      );
       router.push("/dashboard");
+
     } catch (err) {
       setError("Email o password errati");
     }
