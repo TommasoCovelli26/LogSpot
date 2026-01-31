@@ -1,4 +1,4 @@
-import Link from 'next/link'; // <--- 1. Importa Link
+import Link from 'next/link';
 import { lusitana } from '../../ui/fonts';
 import FavoriteHeart from './favorite-heart';
 import { ActivityWithFavorite } from '../../lib/activities';
@@ -21,29 +21,32 @@ export default function MaterialsList({ activities }: { activities: ActivityWith
       <div className="divide-y divide-gray-100">
         {activities.length > 0 ? (
           activities.map((act) => (
-            // 2. Avvolgiamo tutto il contenuto della riga nel Link
-            // Usiamo 'block' per rendere cliccabile tutta l'area
-            <Link 
+            // 1. NON usiamo Link qui. Usiamo un div contenitore per la riga.
+            <div 
               key={act.cod} 
-              href={`/logopedista/imieimateriali/${act.cod}`}
-              className="block hover:bg-yellow-50 transition-colors group"
+              className="flex items-center hover:bg-yellow-50 transition-colors group relative"
             >
-              <div className="flex justify-between items-center px-6 py-4">
-                <div className="flex items-center gap-3">
-                  {/* Il cuore deve rimanere cliccabile separatamente, 
-                      ecco perché in favorite-heart.tsx abbiamo messo e.stopPropagation() */}
-                  <FavoriteHeart cod={act.cod} initialStatus={act.isFavorite} />
+              
+              {/* 2. IL CUORE: Sta fuori dal Link, a sinistra */}
+              <div className="pl-6 pr-2 z-10">
+                 <FavoriteHeart cod={act.cod} initialStatus={act.isFavorite} />
+              </div>
 
+              {/* 3. IL LINK: Avvolge solo il titolo e la data, riempie il resto della riga */}
+              <Link 
+                href={`/logopedista/imieimateriali/${act.cod}`}
+                className="flex-1 flex justify-between items-center py-4 pr-6 pl-2"
+              >
                   <span className={`font-bold text-gray-800 ${lusitana.className} text-lg group-hover:text-black`}>
                     {act.titolo}
                   </span>
-                </div>
 
-                <span className="text-gray-400 text-sm font-medium uppercase">
-                  {formatDate(act.dataCreazione)}
-                </span>
-              </div>
-            </Link>
+                  <span className="text-gray-400 text-sm font-medium uppercase">
+                    {formatDate(act.dataCreazione)}
+                  </span>
+              </Link>
+
+            </div>
           ))
         ) : (
           <div className="p-6 text-center text-gray-400 italic">

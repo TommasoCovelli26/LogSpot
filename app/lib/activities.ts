@@ -26,6 +26,7 @@ export async function fetchActivities(
 ): Promise<ActivityWithFavorite[]> {
   try {
     // Base query
+    // Selezioniamo le attività e usiamo un LEFT JOIN per vedere se sono nei preferiti dell'utente
     let sql = `
       SELECT 
         A.cod, 
@@ -39,15 +40,16 @@ export async function fetchActivities(
 
     const params: any[] = [userId, userId];
 
-    // Filtro Ricerca
+    // 1. Filtro Ricerca
     if (query) {
       sql += ` AND A.titolo LIKE ?`;
       params.push(`%${query}%`);
     }
 
-    // Filtro Tab (Preferiti)
+    // 2. Filtro Tab (Preferiti) - CORREZIONE QUI
+    // Invece di usare 'isFavorite', controlliamo se l'ID nella tabella unita esiste.
     if (filter === 'preferiti') {
-      sql += ` AND isFavorite = 1`;
+      sql += ` AND P.id_attivita IS NOT NULL`;
     }
 
     sql += ` ORDER BY A.dataCreazione DESC`;

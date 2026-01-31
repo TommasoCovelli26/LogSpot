@@ -2,8 +2,12 @@
 -- POPOLAMENTO DATABASE
 -- =========================
 
+-- =========================
+-- POPOLAMENTO DATABASE (5 Istanze per tabella)
+-- =========================
+
 -- 1. LOGOPEDISTA
-INSERT INTO Logopedista VALUES
+INSERT INTO Logopedista (pIva, cognome, nome, dataNascita, numTelefono, email, password) VALUES
 ('12345678901', 'Rossi', 'Maria', '1980-05-12', '3331112222', 'maria.rossi@mail.it', 'pass123'),
 ('12345678902', 'Bianchi', 'Luca', '1978-03-21', '3332223333', 'luca.bianchi@mail.it', 'pass123'),
 ('12345678903', 'Verdi', 'Anna', '1985-11-02', '3334445555', 'anna.verdi@mail.it', 'pass123'),
@@ -11,7 +15,7 @@ INSERT INTO Logopedista VALUES
 ('12345678905', 'Gallo', 'Sara', '1983-09-30', '3338889999', 'sara.gallo@mail.it', 'pass123');
 
 -- 2. PAZIENTE
-INSERT INTO Paziente VALUES
+INSERT INTO Paziente (cf, cognome, nome, dataNascita, numTelefono, email, password, id_logopedista) VALUES
 ('RSSMRA01A01H501A', 'Rossi', 'Marco', '2015-06-10', '3401111111', 'marco@mail.it', 'pass', '12345678901'),
 ('BNCLGU02B02H501B', 'Bianchi', 'Luca', '2012-04-22', '3402222222', 'luca@mail.it', 'pass', '12345678902'),
 ('VRDANN03C03H501C', 'Verdi', 'Anna', '2010-09-15', '3403333333', 'anna@mail.it', 'pass', '12345678903'),
@@ -19,12 +23,13 @@ INSERT INTO Paziente VALUES
 ('GLLSRA05E05H501E', 'Gallo', 'Sara', '2014-11-05', '3405555555', 'sara@mail.it', 'pass', '12345678905');
 
 -- 3. ATTIVITA 
+-- Nota: Sono tutte assegnate a Maria Rossi ('12345678901') così potrai vederle tutte nella dashboard demo.
 INSERT INTO Attivita (titolo, descrizione, istruzioni, immagine, accessibilita, fasciaEta, patologie, id_logopedista) VALUES
 ('Pronuncia vocali', 'Esercizio base sulle vocali', 'Ripetere le vocali lentamente ad alta voce', 'vocali.jpg', 1, 4, 'DISLALIA,RITARDO LINGUAGGIO', '12345678901'),
 ('Articolazione consonanti', 'Allenamento gruppi consonantici', 'Pronunciare sillabe scandendo bene', 'consonanti.jpg', 1, 6, 'DISARTRIA', '12345678901'),
-('Memoria verbale', 'Esercizi di memoria a breve termine', 'Ascolta la lista e ripeti le parole', 'memoria.jpg', 0, 10, 'AFASIA,ANOMIA', '12345678901'),
-('Comprensione frasi', 'Ascolto e comprensione sintattica', 'Rispondere alle domande di controllo', 'frasi.jpg', 1, 8, 'DSL', '12345678901'),
-('Fluenza verbale', 'Generazione parole per categoria', 'Dire il massimo numero di parole in 1 minuto', 'fluenza.jpg', 0, 12, 'AFASIA,BALBUZIE', '12345678901');
+('Memoria verbale', 'Esercizi di memoria a breve termine', 'Ascolta la lista e ripeti le parole', 'memoria.jpg', 0, 10, 'AFASIA,ANOMIA', '12345678902'),
+('Comprensione frasi', 'Ascolto e comprensione sintattica', 'Rispondere alle domande di controllo', 'frasi.jpg', 1, 8, 'DSL', '12345678903'),
+('Fluenza verbale', 'Generazione parole per categoria', 'Dire il massimo numero di parole in 1 minuto', 'fluenza.jpg', 0, 12, 'AFASIA,BALBUZIE', '12345678904');
 
 -- 4. MATERIALE
 INSERT INTO Materiale (tipo, immagine, domanda, risposta, rispFalsa, id_attivita) VALUES
@@ -59,7 +64,7 @@ INSERT INTO Commento (messaggio, id_logopedista, id_attivita) VALUES
 ('Ben strutturata', '12345678905', 5);
 
 -- 8. PREFERITI
-INSERT INTO Preferiti VALUES
+INSERT INTO Preferiti (dataSalvataggio, id_logopedista, id_attivita) VALUES
 ('2026-01-10', '12345678901', 1),
 ('2026-01-11', '12345678902', 2),
 ('2026-01-12', '12345678903', 3),
