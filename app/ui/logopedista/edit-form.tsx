@@ -21,7 +21,7 @@ export default function EditForm({ activity }: { activity: ActivityDetail }) {
   const [formState, setFormState] = useState({
     titolo: activity.titolo,
     descrizioneTesto: activity.descrizione || '',
-    allegati: activity.immagine ? activity.immagine.split(',').filter(Boolean) : [],
+    allegati: activity.immagine ? activity.immagine.split('|').filter(Boolean) : [],
     obbiettivo: activity.istruzioni || '',
     fasciaEta: activity.fasciaEta,
     patologie: activity.patologie ? activity.patologie.split(',').filter(Boolean) : [],
@@ -36,8 +36,7 @@ export default function EditForm({ activity }: { activity: ActivityDetail }) {
     formState.obbiettivo !== (activity.istruzioni || '') ||
     formState.fasciaEta !== activity.fasciaEta ||
     formState.accessibilita !== activity.accessibilita ||
-    // Per gli array, li uniamo in stringa e confrontiamo con la stringa del DB
-    formState.allegati.join(',') !== (activity.immagine || '') ||
+    formState.allegati.join('|') !== (activity.immagine || '') ||
     formState.patologie.join(',') !== (activity.patologie || '');
 
   // --- 2. PROTEZIONE CHIUSURA BROWSER ---
@@ -68,15 +67,38 @@ export default function EditForm({ activity }: { activity: ActivityDetail }) {
 
   const handleAddFile = (files: FileList | null) => {
     if (files && files[0]) {
-      const fileName = files[0].name;
-      if (!formState.allegati.includes(fileName)) {
-        setFormState(prev => ({ ...prev, allegati: [...prev.allegati, fileName] }));
+      const file = files[0];
+      // Controllo di sicurezza basilare: è un'immagine?
+      if (!file.type.startsWith('image/')) {
+        alert("Per favore carica solo file immagine.");
+        return;
       }
+
+      const reader = new FileReader();
+      
+      reader.onloadend = () => {
+        // reader.result contiene la stringa base64 dell'immagine
+        const base64String = reader.result as string;
+
+        // Evitiamo duplicati esatti
+        if (!formState.allegati.includes(base64String)) {
+          setFormState(prev => ({
+            ...prev,
+            allegati: [...prev.allegati, base64String]
+          }));
+        }
+      };
+
+      // Legge il file e scatena l'onloadend
+      reader.readAsDataURL(file);
     }
   };
 
-  const removeFile = (fileName: string) => {
-    setFormState(prev => ({ ...prev, allegati: prev.allegati.filter(f => f !== fileName) }));
+  const removeFile = (fileData: string) => {
+    setFormState(prev => ({
+      ...prev,
+      allegati: prev.allegati.filter(f => f !== fileData)
+    }));
   };
 
   const togglePatologia = (pat: string) => {
@@ -92,7 +114,7 @@ export default function EditForm({ activity }: { activity: ActivityDetail }) {
     const dataToSave = {
       ...formState,
       descrizione: formState.descrizioneTesto, 
-      immagine: formState.allegati.join(',') 
+      immagine: formState.allegati.join('|') 
     };
 
     const res = await updateActivity(activity.cod, dataToSave);

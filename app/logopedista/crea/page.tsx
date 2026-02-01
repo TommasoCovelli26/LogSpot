@@ -60,25 +60,44 @@ export default function CreaAttivitaPage() {
     setFormState(prev => ({ ...prev, [field]: value }));
   };
 
+  // --- NUOVA LOGICA: Conversione in Base64 per anteprima immediata ---
   const handleAddFile = (files: FileList | null) => {
     if (files && files[0]) {
-      const fileName = files[0].name;
-      if (!formState.allegati.includes(fileName)) {
-        setFormState(prev => ({
-          ...prev,
-          allegati: [...prev.allegati, fileName]
-        }));
+      const file = files[0];
+      // Controllo di sicurezza basilare: è un'immagine?
+      if (!file.type.startsWith('image/')) {
+        alert("Per favore carica solo file immagine.");
+        return;
       }
+
+      const reader = new FileReader();
+      
+      reader.onloadend = () => {
+        // reader.result contiene la stringa base64 dell'immagine
+        const base64String = reader.result as string;
+
+        // Evitiamo duplicati esatti
+        if (!formState.allegati.includes(base64String)) {
+          setFormState(prev => ({
+            ...prev,
+            allegati: [...prev.allegati, base64String]
+          }));
+        }
+      };
+
+      // Legge il file e scatena l'onloadend
+      reader.readAsDataURL(file);
     }
   };
 
-  const removeFile = (fileName: string) => {
+  // Aggiorna anche removeFile per confrontare la stringa intera
+  const removeFile = (fileData: string) => {
     setFormState(prev => ({
       ...prev,
-      allegati: prev.allegati.filter(f => f !== fileName)
+      allegati: prev.allegati.filter(f => f !== fileData)
     }));
   };
-
+  
   const togglePatologia = (pat: string) => {
     const current = formState.patologie;
     const newPatologie = current.includes(pat) 
@@ -91,10 +110,13 @@ export default function CreaAttivitaPage() {
     if (!formState.titolo) return alert("Inserisci almeno il titolo.");
     setIsSaving(true);
 
+    // MODIFICA QUI: Usa '|' invece di ','
+    const allegatiString = formState.allegati.join('|');
+
     const dataToSave = {
       ...formState,
       descrizione: formState.descrizioneTesto, 
-      immagine: formState.allegati.join(',') 
+      immagine: allegatiString 
     };
 
     const res = await saveActivity(dataToSave);

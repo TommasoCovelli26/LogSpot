@@ -2,14 +2,14 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { 
   ArrowLeftIcon, 
-  PaperClipIcon, 
   UserCircleIcon,
   DocumentTextIcon,
-  PencilSquareIcon // <--- Nuova icona
+  PencilSquareIcon
 } from '@heroicons/react/24/outline';
 import { fetchActivityById } from '../../../lib/activities';
 import { lusitana } from '../../../ui/fonts';
 import DeleteActivityButton from '../../../ui/logopedista/delete-button';
+import DetailImageViewer from '../../../ui/logopedista/detail-image-viewer';
 
 export default async function ActivityDetailPage({ 
   params 
@@ -24,7 +24,7 @@ export default async function ActivityDetailPage({
   }
 
   const patologieList = activity.patologie ? activity.patologie.split(',') : [];
-  const allegatiList = activity.immagine ? activity.immagine.split(',') : [];
+  const allegatiList = activity.immagine ? activity.immagine.split('|') : [];
 
   return (
     <main className="w-full min-h-screen bg-white p-6 md:p-12 font-sans">
@@ -77,26 +77,12 @@ export default async function ActivityDetailPage({
                 <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                     <DocumentTextIcon className="w-5 h-5" /> Descrizione
                 </h3>
+                
                 <p className="text-gray-800 text-lg leading-relaxed whitespace-pre-wrap">
                     {activity.descrizione || "Nessuna descrizione inserita per questa attività."}
                 </p>
-                {allegatiList.length > 0 && (
-                    <div className="mt-10 pt-6 border-t border-gray-100">
-                        <h4 className="text-xs font-bold text-gray-400 uppercase mb-4 flex items-center gap-2">
-                            <PaperClipIcon className="w-4 h-4" /> Allegati ({allegatiList.length})
-                        </h4>
-                        <div className="flex flex-wrap gap-3">
-                            {allegatiList.map((file, idx) => (
-                                <div key={idx} className="flex items-center gap-3 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-xl text-yellow-800 transition hover:bg-yellow-100 cursor-default">
-                                    <div className="bg-yellow-200 p-1.5 rounded-lg">
-                                        <PaperClipIcon className="w-4 h-4 text-yellow-800" />
-                                    </div>
-                                    <span className="font-bold text-sm truncate max-w-[200px]">{file}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
+
+                <DetailImageViewer images={allegatiList} />
             </div>
             <div className="bg-blue-50 rounded-2xl p-8 border border-blue-100">
                 <h3 className="text-sm font-bold text-blue-300 uppercase tracking-widest mb-4">
