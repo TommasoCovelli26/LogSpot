@@ -27,6 +27,8 @@ export default function NavLinks() {
   }, []);
 
   const logout = () => {
+    const conferma = window.confirm("Sei sicuro di voler effettuare il logout?");
+    if (!conferma) return;
     localStorage.removeItem("utente");
     setUtente(null);
     router.push("/");
@@ -46,8 +48,7 @@ export default function NavLinks() {
   const linksLogopedista = [
     { name: 'Dashboard', href: '/dashboard', icon: RectangleStackIcon },
     { name: 'Pazienti', href: '/logopedista/lista-pazienti', icon: UserGroupIcon },
-    { name: 'Attività', href: '/dashboard/attivita', icon: ClipboardDocumentListIcon },
-    { name: 'Ricerca Materiali', href: '/dashboard/attivita', icon: MagnifyingGlassIcon },
+    { name: 'Attività', href: '/logopedista/imieimateriali', icon: ClipboardDocumentListIcon },
     { name: 'Profilo', href: '/profilo', icon: UserCircleIcon },
   ];
 
