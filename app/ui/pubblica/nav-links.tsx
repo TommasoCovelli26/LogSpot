@@ -8,6 +8,8 @@ import {
   ClipboardDocumentListIcon,
   UserGroupIcon,
   ArrowRightOnRectangleIcon,
+  MagnifyingGlassIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -43,14 +45,16 @@ export default function NavLinks() {
 
   const linksLogopedista = [
     { name: 'Dashboard', href: '/dashboard', icon: RectangleStackIcon },
-    { name: 'Pazienti', href: '/dashboard/pazienti', icon: UserGroupIcon },
+    { name: 'Pazienti', href: '/logopedista/lista-pazienti', icon: UserGroupIcon },
     { name: 'Attività', href: '/dashboard/attivita', icon: ClipboardDocumentListIcon },
+    { name: 'Ricerca Materiali', href: '/dashboard/attivita', icon: MagnifyingGlassIcon },
     { name: 'Profilo', href: '/profilo', icon: UserCircleIcon },
   ];
 
   const linksPaziente = [
     { name: 'Dashboard', href: '/dashboard', icon: RectangleStackIcon },
     { name: 'I miei esercizi', href: '/dashboard/esercizi', icon: ClipboardDocumentListIcon },
+    { name: 'I miei Progressi', href: '/paziente/progressi', icon: ChartBarIcon },
     { name: 'Profilo', href: '/profilo', icon: UserCircleIcon },
   ];
 
