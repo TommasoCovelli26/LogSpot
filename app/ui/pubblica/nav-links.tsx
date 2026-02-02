@@ -25,6 +25,8 @@ export default function NavLinks() {
   }, []);
 
   const logout = () => {
+    const conferma = window.confirm("Sei sicuro di voler effettuare il logout?");
+    if (!conferma) return;
     localStorage.removeItem("utente");
     setUtente(null);
     router.push("/");

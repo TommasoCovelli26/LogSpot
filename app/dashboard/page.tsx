@@ -38,17 +38,17 @@ export default function DashboardPage() {
           <Card
             title="Pazienti"
             description="Visualizza e gestisci i tuoi pazienti."
-            href="/dashboard/pazienti"
+            href="/logopedista/lista-pazienti"
           />
           <Card
             title="Attività"
             description="Crea e organizza attività riabilitative."
-            href="/dashboard/attivita"
+            href="/logopedista/imieimateriali"
           />
           <Card
             title="Esercizi"
             description="Assegna esercizi e controlla i risultati."
-            href="/dashboard/esercizi"
+            href="/logopedista/esercizi"
           />
         </div>
       )}

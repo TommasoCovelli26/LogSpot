@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,6 +35,10 @@ export default function LoginPage() {
         JSON.stringify({
           email: data.utente.email,
           ruolo: data.ruolo,
+          codice:
+            data.ruolo === "logopedista"
+              ? data.utente.pIva
+              : data.utente.cf,
         })
       );
       router.push("/dashboard");
@@ -70,6 +75,10 @@ export default function LoginPage() {
           Accedi
         </button>
 
+        <p style={styles.registerText}>
+          Non hai un account? <Link href="/scelta-utente" style={styles.registerLink}>Registrati</Link>
+        </p>
+
         {error && <p style={styles.error}>{error}</p>}
       </form>
     </div>
@@ -99,6 +108,16 @@ const styles = {
     backgroundColor: "#2563eb",
     color: "white",
     border: "none",
+    cursor: "pointer",
+  },
+  registerText: {
+    marginTop: "4px",
+    fontSize: "14px",
+    color: "#333",
+  },
+  registerLink: {
+    color: "#2563eb",
+    textDecoration: "underline",
     cursor: "pointer",
   },
   error: {

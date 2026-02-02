@@ -8,6 +8,7 @@ export default function ProfiloPage() {
 
   const [utente, setUtente] = useState<any>(null);
   const [edit, setEdit] = useState(false);
+  const [utenteOriginale, setUtenteOriginale] = useState<any>(null);
 
  useEffect(() => {
   const sessione = localStorage.getItem("utente");
@@ -91,6 +92,20 @@ export default function ProfiloPage() {
     }
   };
 
+  const avviaModifica = () => {
+    setUtenteOriginale(utente);
+    setEdit(true);
+  };
+
+  const annullaModifiche = () => {
+    const conferma = window.confirm("Sei sicuro di annullare le modifiche?");
+    if (!conferma) return;
+    if (utenteOriginale) {
+      setUtente(utenteOriginale);
+    }
+    setEdit(false);
+  };
+
 
   const eliminaAccount = async () => {
     if (!utente) return;
@@ -127,9 +142,15 @@ export default function ProfiloPage() {
         {campo("Email", "email")}
       </div>
 
-      <button onClick={() => setEdit(!edit)} style={styles.editBtn}>
-        ✏️ Modifica
-      </button>
+      {!edit ? (
+        <button onClick={avviaModifica} style={styles.editBtn}>
+          ✏️ Modifica
+        </button>
+      ) : (
+        <button onClick={annullaModifiche} style={styles.editBtn}>
+          ✖️ Annulla
+        </button>
+      )}
 
       {edit && (
         <button onClick={salvaModifiche} style={styles.saveBtn}>
