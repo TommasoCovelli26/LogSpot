@@ -18,34 +18,43 @@ export async function POST(request: Request) {
 
     const db = new Database(dbPath);
 
-    // Controllo logopedista
+    // --- Controllo LOGOPEDISTA ---
     const logopedista = db
-      .prepare(
-        "SELECT * FROM Logopedista WHERE email = ? AND password = ?"
-      )
-      .get(email, password);
+      .prepare("SELECT * FROM Logopedista WHERE email = ? AND password = ?")
+      .get(email, password) as any;
 
     if (logopedista) {
-      return NextResponse.json({
+      const userData = {
         ruolo: "logopedista",
         utente: {
           nome: logopedista.nome,
           cognome: logopedista.cognome,
           email: logopedista.email,
-          pIva: logopedista.pIva,
+          pIva: logopedista.pIva, // La chiave che useremo
         },
+      };
+
+      // Creiamo la risposta
+      const response = NextResponse.json(userData);
+
+      // AGGIUNTA: Impostiamo il Cookie "utente"
+      // HttpOnly = true significa che il JavaScript del browser non può leggerlo (più sicuro)
+      response.cookies.set("utente", JSON.stringify(userData), {
+        httpOnly: true,
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7, // 1 settimana
       });
+
+      return response;
     }
 
-    // Controllo paziente
+    // --- Controllo PAZIENTE ---
     const paziente = db
-      .prepare(
-        "SELECT * FROM Paziente WHERE email = ? AND password = ?"
-      )
-      .get(email, password);
+      .prepare("SELECT * FROM Paziente WHERE email = ? AND password = ?")
+      .get(email, password) as any;
 
     if (paziente) {
-      return NextResponse.json({
+      const userData = {
         ruolo: "paziente",
         utente: {
           nome: paziente.nome,
@@ -53,7 +62,18 @@ export async function POST(request: Request) {
           email: paziente.email,
           cf: paziente.cf,
         },
+      };
+
+      const response = NextResponse.json(userData);
+
+      // AGGIUNTA: Cookie anche per il paziente (per coerenza futura)
+      response.cookies.set("utente", JSON.stringify(userData), {
+        httpOnly: true,
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
       });
+
+      return response;
     }
 
     return NextResponse.json(

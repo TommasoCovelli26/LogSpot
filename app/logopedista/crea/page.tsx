@@ -11,6 +11,7 @@ import CreateDescription from '../../ui/logopedista/create-description';
 import CreateAge from '../../ui/logopedista/create-age';
 import CreatePathology from '../../ui/logopedista/create-pathology';
 import CreateObjective from '../../ui/logopedista/create-objective';
+import CreateAccessibility from '../../ui/logopedista/create-accessibility';
 import CreateSaveButton from '../../ui/logopedista/create-save-button';
 
 export default function CreaAttivitaPage() {
@@ -168,7 +169,13 @@ export default function CreaAttivitaPage() {
         onChange={(val) => handleInputChange('obbiettivo', val)}
       />
 
-      {/* 7. SALVA */}
+      {/* 7. ACCESSIBILITÀ */}
+      <CreateAccessibility 
+        isPublic={formState.accessibilita}
+        onChange={(val) => handleInputChange('accessibilita', val)}
+      />
+
+      {/* 8. SALVA */}
       <CreateSaveButton 
         onSave={handleSave}
         isSaving={isSaving}

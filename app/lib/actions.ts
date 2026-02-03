@@ -2,14 +2,33 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers'; // <--- IMPORTANTE
 import { db } from '@/lib/db';
+
+// --- Funzione Helper per ottenere l'ID utente ---
+async function getUserId() {
+  const cookieStore = await cookies();
+  const userCookie = cookieStore.get('utente');
+  
+  if (!userCookie) return null;
+
+  try {
+    const userData = JSON.parse(userCookie.value);
+    // Restituisce la P.IVA se è logopedista
+    return userData.utente?.pIva || null;
+  } catch (error) {
+    return null;
+  }
+}
 
 /* =====================================================
    FUNZIONI PREFERITI (CUORE)
 ===================================================== */
 
 export async function toggleFavorite(activityId: number, isFavorite: boolean) {
-  const userId = '12345678901'; // TODO: da sessione
+  const userId = await getUserId(); // <--- USA ID REALE
+
+  if (!userId) return { success: false, error: 'Utente non autenticato' };
 
   try {
     if (isFavorite) {
@@ -38,13 +57,15 @@ export async function toggleFavorite(activityId: number, isFavorite: boolean) {
 ===================================================== */
 
 export async function saveActivity(formData: any) {
-  const userId = '12345678901'; // TODO: da sessione
+  const userId = await getUserId(); // <--- USA ID REALE
+
+  if (!userId) return { success: false, message: 'Devi essere loggato per salvare' };
 
   try {
     const {
       titolo,
       descrizione,
-      immagine,
+      immagine, // Riceve già la stringa separata da "|" dal form
       obbiettivo,
       fasciaEta,
       patologie,
@@ -91,6 +112,7 @@ export async function saveActivity(formData: any) {
 ===================================================== */
 
 export async function assignPatientToLogopedist(cf: string, pIva: string) {
+  // Qui pIva viene passata esplicitamente, ma potremmo verificarla per sicurezza
   try {
     db.prepare(`
       UPDATE Paziente
@@ -126,11 +148,16 @@ export async function unassignPatient(cf: string) {
   }
 }
 
+/* =====================================================
+   ELIMINAZIONE ATTIVITÀ
+===================================================== */
+
 export async function deleteActivity(id: number) {
-  const userId = '12345678901'; // Demo ID
+  const userId = await getUserId(); // <--- USA ID REALE
+
+  if (!userId) return { success: false, message: 'Non autorizzato' };
 
   try {
-    // Verifichiamo che l'attività appartenga all'utente prima di eliminare
     const result = db.prepare(`
       DELETE FROM Attivita 
       WHERE cod = ? AND id_logopedista = ?
@@ -146,7 +173,6 @@ export async function deleteActivity(id: number) {
     return { success: false, message: 'Errore durante l\'eliminazione' };
   }
 
-  // Il redirect va fatto fuori dal try-catch in Next.js server actions
   redirect('/logopedista/imieimateriali');
 }
 
@@ -154,7 +180,9 @@ export async function deleteActivity(id: number) {
    AGGIORNAMENTO ATTIVITÀ
 ===================================================== */
 export async function updateActivity(id: number, formData: any) {
-  const userId = '12345678901';
+  const userId = await getUserId(); // <--- USA ID REALE
+
+  if (!userId) return { success: false, message: 'Non autorizzato' };
 
   try {
     const {
@@ -194,8 +222,8 @@ export async function updateActivity(id: number, formData: any) {
       userId
     );
 
-    revalidatePath(`/logopedista/imieimateriali/${id}`); // Aggiorna la pagina dettaglio
-    revalidatePath('/logopedista/imieimateriali');       // Aggiorna la lista
+    revalidatePath(`/logopedista/imieimateriali/${id}`);
+    revalidatePath('/logopedista/imieimateriali');
     return { success: true, message: 'Attività aggiornata!' };
 
   } catch (error) {

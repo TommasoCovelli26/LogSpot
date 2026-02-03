@@ -26,10 +26,18 @@ export default function NavLinks() {
     if (u) setUtente(JSON.parse(u));
   }, []);
 
-  const logout = () => {
+  const logout = async () => {
     const conferma = window.confirm("Sei sicuro di voler effettuare il logout?");
     if (!conferma) return;
+    
     localStorage.removeItem("utente");
+    
+    try {
+      await fetch("/api/logout", { method: "POST" });
+    } catch (error) {
+      console.error("Errore durante il logout server:", error);
+    }
+    
     setUtente(null);
     router.push("/");
   };
