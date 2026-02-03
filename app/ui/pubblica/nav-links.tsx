@@ -48,7 +48,8 @@ export default function NavLinks() {
   const linksLogopedista = [
     { name: 'Dashboard', href: '/dashboard', icon: RectangleStackIcon },
     { name: 'Pazienti', href: '/logopedista/lista-pazienti', icon: UserGroupIcon },
-    { name: 'Attività', href: '/logopedista/imieimateriali', icon: ClipboardDocumentListIcon },
+    { name: 'I miei materiali', href: '/logopedista/imieimateriali', icon: ClipboardDocumentListIcon },
+    { name: 'Ricerca materiali', href: '/logopedista/ricerca-materiali', icon: MagnifyingGlassIcon },
     { name: 'Profilo', href: '/profilo', icon: UserCircleIcon },
   ];
 

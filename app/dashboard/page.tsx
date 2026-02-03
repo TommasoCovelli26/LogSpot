@@ -59,12 +59,12 @@ export default function DashboardPage() {
           <Card
             title="I miei esercizi"
             description="Svolgi gli esercizi assegnati dal logopedista."
-            href="/dashboard/esercizi"
+            href="/paziente/esercizi"
           />
           <Card
             title="Progressi"
             description="Monitora i tuoi miglioramenti nel tempo."
-            href="/dashboard/progressi"
+            href="/paziente/progressi"
           />
           <Card
             title="Profilo"

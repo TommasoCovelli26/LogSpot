@@ -67,6 +67,63 @@ export async function fetchActivities(
   }
 }
 
+export async function fetchPublicActivities(
+  userId: string,
+  query: string = '',
+  filter: string = 'recenti',
+  age?: number,
+  pathologies?: string[]
+): Promise<ActivityWithFavorite[]> {
+  try {
+    let sql = `
+      SELECT 
+        A.cod, 
+        A.titolo, 
+        A.dataCreazione,
+        (CASE WHEN P.id_attivita IS NOT NULL THEN 1 ELSE 0 END) as isFavorite
+      FROM Attivita A
+      LEFT JOIN Preferiti P ON A.cod = P.id_attivita AND P.id_logopedista = ?
+      WHERE A.accessibilita = 1
+    `;
+
+    const params: any[] = [userId];
+
+    if (query) {
+      sql += ` AND A.titolo LIKE ?`;
+      params.push(`%${query}%`);
+    }
+
+    if (age && age > 0) {
+      sql += ` AND A.fasciaEta <= ?`;
+      params.push(age);
+    }
+
+    if (pathologies && pathologies.length > 0) {
+      // Filtriamo le attività che contengono almeno una delle patologie selezionate
+      const pathologyConditions = pathologies.map(() => `A.patologie LIKE ?`).join(' OR ');
+      sql += ` AND (${pathologyConditions})`;
+      pathologies.forEach(pat => params.push(`%${pat}%`));
+    }
+
+    if (filter === 'preferiti') {
+      sql += ` AND P.id_attivita IS NOT NULL`;
+    }
+
+    sql += ` ORDER BY A.dataCreazione DESC`;
+
+    const stmt = db.prepare(sql);
+    const rows = stmt.all(...params) as any[];
+
+    return rows.map(row => ({
+      ...row,
+      isFavorite: Boolean(row.isFavorite)
+    }));
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Impossibile recuperare le attività pubbliche.');
+  }
+}
+
 export async function fetchActivityById(id: string): Promise<ActivityDetail | null> {
   try {
     const stmt = db.prepare(`

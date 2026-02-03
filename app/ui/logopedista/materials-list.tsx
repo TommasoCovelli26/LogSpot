@@ -8,7 +8,13 @@ const formatDate = (dateString: string) => {
   return date.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
-export default function MaterialsList({ activities }: { activities: ActivityWithFavorite[] }) {
+export default function MaterialsList({
+  activities,
+  baseHref = '/logopedista/imieimateriali'
+}: {
+  activities: ActivityWithFavorite[];
+  baseHref?: string;
+}) {
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
       {/* Header Tabella */}
@@ -34,7 +40,7 @@ export default function MaterialsList({ activities }: { activities: ActivityWith
 
               {/* 3. IL LINK: Avvolge solo il titolo e la data, riempie il resto della riga */}
               <Link 
-                href={`/logopedista/imieimateriali/${act.cod}`}
+                href={`${baseHref}/${act.cod}`}
                 className="flex-1 flex justify-between items-center py-4 pr-6 pl-2"
               >
                   <span className={`font-bold text-gray-800 ${lusitana.className} text-lg group-hover:text-black`}>
