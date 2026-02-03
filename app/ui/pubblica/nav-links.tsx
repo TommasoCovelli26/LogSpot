@@ -62,7 +62,7 @@ export default function NavLinks() {
 
   const linksPaziente = [
     { name: 'Dashboard', href: '/dashboard', icon: RectangleStackIcon },
-    { name: 'I miei esercizi', href: '/dashboard/esercizi', icon: ClipboardDocumentListIcon },
+    { name: 'I miei esercizi', href: '/paziente/esercizi', icon: ClipboardDocumentListIcon },
     { name: 'I miei Progressi', href: '/paziente/progressi', icon: ChartBarIcon },
     { name: 'Profilo', href: '/profilo', icon: UserCircleIcon },
   ];

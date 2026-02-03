@@ -5,6 +5,22 @@ import path from "path";
 // Percorso database
 const dbPath = path.join(process.cwd(), "app/data/database.db");
 
+type LogopedistaDB = {
+  pIva: string;
+  nome: string;
+  cognome: string;
+  email: string;
+  password: string;
+};
+
+type PazienteDB = {
+  cf: string;
+  nome: string;
+  cognome: string;
+  email: string;
+  password: string;
+};
+
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
@@ -21,7 +37,7 @@ export async function POST(request: Request) {
     // --- Controllo LOGOPEDISTA ---
     const logopedista = db
       .prepare("SELECT * FROM Logopedista WHERE email = ? AND password = ?")
-      .get(email, password) as any;
+      .get(email, password) as LogopedistaDB | undefined;
 
     if (logopedista) {
       const userData = {
@@ -30,19 +46,16 @@ export async function POST(request: Request) {
           nome: logopedista.nome,
           cognome: logopedista.cognome,
           email: logopedista.email,
-          pIva: logopedista.pIva, // La chiave che useremo
+          pIva: logopedista.pIva,
         },
       };
 
-      // Creiamo la risposta
       const response = NextResponse.json(userData);
 
-      // AGGIUNTA: Impostiamo il Cookie "utente"
-      // HttpOnly = true significa che il JavaScript del browser non può leggerlo (più sicuro)
       response.cookies.set("utente", JSON.stringify(userData), {
         httpOnly: true,
         path: "/",
-        maxAge: 60 * 60 * 24 * 7, // 1 settimana
+        maxAge: 60 * 60 * 24 * 7,
       });
 
       return response;
@@ -51,7 +64,7 @@ export async function POST(request: Request) {
     // --- Controllo PAZIENTE ---
     const paziente = db
       .prepare("SELECT * FROM Paziente WHERE email = ? AND password = ?")
-      .get(email, password) as any;
+      .get(email, password) as PazienteDB | undefined;
 
     if (paziente) {
       const userData = {
@@ -66,7 +79,6 @@ export async function POST(request: Request) {
 
       const response = NextResponse.json(userData);
 
-      // AGGIUNTA: Cookie anche per il paziente (per coerenza futura)
       response.cookies.set("utente", JSON.stringify(userData), {
         httpOnly: true,
         path: "/",
