@@ -18,13 +18,13 @@ export default function ProgressiPazientePage() {
       return;
     }
 
-    // const { cf } = JSON.parse(sessione);
-    const cf = 'RSSMRA01A01H501A';
+    const utenteObj = JSON.parse(sessione);
+    const cf = utenteObj.codice;
+    
 
     const fetchProgressi = async () => {
       try {
         const res = await fetch(`/api/progressi?cf=${cf}`);
-        console.log("Dati in fase di salvataggio:", res);
         if (res.ok) {
           const data = await res.json();
           setExercises(data);

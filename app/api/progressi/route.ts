@@ -3,8 +3,7 @@ import { db } from '@/lib/db';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  // const cf = searchParams.get('cf');
-  const cf = 'RSSMRA01A01H501A';
+  const cf = searchParams.get('cf');
 
 
   if (!cf) {

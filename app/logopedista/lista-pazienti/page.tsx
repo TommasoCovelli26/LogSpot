@@ -30,7 +30,6 @@ export default function Page(props: {
 
     const utenteObj = JSON.parse(sessione);
     const pIva = utenteObj.codice; // Recupero pIva dal localStorage
-    console.log("DEBUG - pIva inviata:", utenteObj.codice); // Deve essere '12345678901'
 
 
 
@@ -39,8 +38,6 @@ export default function Page(props: {
       try {
         // Fetch dei dati basato sulla pIva della sessione
         const data = await fetchPatients(pIva, query);
-        console.log("DEBUG - Dati ricevuti dal server:", data); // Se questo è [] allora il problema è la query SQL
-  console.log("DEBUG - query inviata:", query);
         setPatients(data);
       } catch (error) {
         console.error("Errore nel caricamento dei pazienti:", error);
