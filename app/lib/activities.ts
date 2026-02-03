@@ -7,6 +7,15 @@ export interface ActivityWithFavorite {
   isFavorite: boolean;
 }
 
+export interface AssignedExercise {
+  id: number;
+  titolo: string;
+  dataAssegnazione: string;
+  statoCompletamento: string | null;
+  esito: string | null;
+  id_attivita: number;
+}
+
 export interface ActivityDetail {
   cod: number;
   titolo: string;
@@ -84,5 +93,51 @@ export async function fetchActivityById(id: string): Promise<ActivityDetail | nu
   } catch (error) {
     console.error('Database Error:', error);
     return null;
+  }
+}
+
+export async function fetchAssignedExercises(
+  patientCf: string,
+  query: string = '',
+  filter: string = 'tutti'
+): Promise<AssignedExercise[]> {
+  try {
+    let sql = `
+      SELECT 
+        E.id,
+        A.titolo,
+        E.dataAssegnazione,
+        E.statoCompletamento,
+        E.esito,
+        E.id_attivita
+      FROM Esercizio E
+      INNER JOIN Attivita A ON E.id_attivita = A.cod
+      WHERE E.id_paziente = ?
+    `;
+
+    const params: any[] = [patientCf];
+
+    // Filtro ricerca
+    if (query) {
+      sql += ` AND A.titolo LIKE ?`;
+      params.push(`%${query}%`);
+    }
+
+    // Filtro per stato
+    if (filter === 'completati') {
+      sql += ` AND E.statoCompletamento = 'completato'`;
+    } else if (filter === 'in-corso') {
+      sql += ` AND (E.statoCompletamento IS NULL OR E.statoCompletamento = 'in-corso')`;
+    }
+
+    sql += ` ORDER BY E.dataAssegnazione DESC`;
+
+    const stmt = db.prepare(sql);
+    const rows = stmt.all(...params) as AssignedExercise[];
+
+    return rows;
+  } catch (error) {
+    console.error('Database Error:', error);
+    throw new Error('Impossibile recuperare gli esercizi assegnati.');
   }
 }

@@ -59,7 +59,7 @@ export default function DashboardPage() {
           <Card
             title="I miei esercizi"
             description="Svolgi gli esercizi assegnati dal logopedista."
-            href="/dashboard/esercizi"
+            href="/paziente/esercizi"
           />
           <Card
             title="Progressi"
