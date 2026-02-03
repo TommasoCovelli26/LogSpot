@@ -5,6 +5,23 @@ import path from "path";
 // Percorso database
 const dbPath = path.join(process.cwd(), "app/data/database.db");
 
+type LogopedistaDB = {
+  pIva: string;
+  nome: string;
+  cognome: string;
+  email: string;
+  password: string;
+};
+
+type PazienteDB = {
+  cf: string;
+  nome: string;
+  cognome: string;
+  email: string;
+  password: string;
+};
+
+
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
@@ -20,10 +37,8 @@ export async function POST(request: Request) {
 
     // Controllo logopedista
     const logopedista = db
-      .prepare(
-        "SELECT * FROM Logopedista WHERE email = ? AND password = ?"
-      )
-      .get(email, password);
+      .prepare("SELECT * FROM Logopedista WHERE email = ? AND password = ?")
+      .get(email, password) as LogopedistaDB | undefined;
 
     if (logopedista) {
       return NextResponse.json({
@@ -39,10 +54,8 @@ export async function POST(request: Request) {
 
     // Controllo paziente
     const paziente = db
-      .prepare(
-        "SELECT * FROM Paziente WHERE email = ? AND password = ?"
-      )
-      .get(email, password);
+      .prepare("SELECT * FROM Paziente WHERE email = ? AND password = ?")
+      .get(email, password) as PazienteDB | undefined;
 
     if (paziente) {
       return NextResponse.json({
