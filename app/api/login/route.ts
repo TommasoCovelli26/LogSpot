@@ -32,6 +32,7 @@ export async function POST(request: Request) {
           nome: logopedista.nome,
           cognome: logopedista.cognome,
           email: logopedista.email,
+          pIva: logopedista.pIva,
         },
       });
     }
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
           nome: paziente.nome,
           cognome: paziente.cognome,
           email: paziente.email,
+          cf: paziente.cf,
         },
       });
     }
