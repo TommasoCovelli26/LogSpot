@@ -29,8 +29,9 @@ export default function Page(props: {
     }
 
     const utenteObj = JSON.parse(sessione);
-    const pIva = utenteObj.cod; // Recupero pIva dal localStorage
-            console.log("DEBUG - pIva inviata:", pIva); // Deve essere '12345678901'
+    const pIva = utenteObj.codice; // Recupero pIva dal localStorage
+    console.log("DEBUG - pIva inviata:", utenteObj.codice); // Deve essere '12345678901'
+
 
 
     const loadData = async () => {

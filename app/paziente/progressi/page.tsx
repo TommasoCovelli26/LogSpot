@@ -23,7 +23,8 @@ export default function ProgressiPazientePage() {
 
     const fetchProgressi = async () => {
       try {
-        const res = await fetch(`/api/paziente/progressi?cf=${cf}`);
+        const res = await fetch(`/api/progressi?cf=${cf}`);
+        console.log("Dati in fase di salvataggio:", res);
         if (res.ok) {
           const data = await res.json();
           setExercises(data);
@@ -56,7 +57,7 @@ export default function ProgressiPazientePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
         <div className="bg-blue-50 p-10 rounded-3xl border-2 border-blue-200 shadow-sm">
           <p className="text-2xl text-blue-700 font-bold uppercase tracking-wider">Esercizi Fatti</p>
-          <p className="text-6xl font-black text-blue-900 mt-4">
+          <p className="text-6xl font-black text-blue-900 mt-4 text-">
             {completed.length} <span className="text-3xl text-blue-400">/ {total}</span>
           </p>
         </div>
