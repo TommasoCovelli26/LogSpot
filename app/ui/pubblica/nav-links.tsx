@@ -26,10 +26,18 @@ export default function NavLinks() {
     if (u) setUtente(JSON.parse(u));
   }, []);
 
-  const logout = () => {
+  const logout = async () => {
     const conferma = window.confirm("Sei sicuro di voler effettuare il logout?");
     if (!conferma) return;
+    
     localStorage.removeItem("utente");
+    
+    try {
+      await fetch("/api/logout", { method: "POST" });
+    } catch (error) {
+      console.error("Errore durante il logout server:", error);
+    }
+    
     setUtente(null);
     router.push("/");
   };
@@ -55,7 +63,7 @@ export default function NavLinks() {
 
   const linksPaziente = [
     { name: 'Dashboard', href: '/dashboard', icon: RectangleStackIcon },
-    { name: 'I miei esercizi', href: '/dashboard/esercizi', icon: ClipboardDocumentListIcon },
+    { name: 'I miei esercizi', href: '/paziente/esercizi', icon: ClipboardDocumentListIcon },
     { name: 'I miei Progressi', href: '/paziente/progressi', icon: ChartBarIcon },
     { name: 'Profilo', href: '/profilo', icon: UserCircleIcon },
   ];

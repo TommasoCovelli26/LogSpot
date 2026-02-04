@@ -12,6 +12,7 @@ import CreateDescription from './create-description';
 import CreateAge from './create-age';
 import CreatePathology from './create-pathology';
 import CreateObjective from './create-objective';
+import CreateAccessibility from './create-accessibility';
 
 export default function EditForm({ activity }: { activity: ActivityDetail }) {
   const router = useRouter();
@@ -159,6 +160,11 @@ export default function EditForm({ activity }: { activity: ActivityDetail }) {
       <CreateObjective 
         value={formState.obbiettivo}
         onChange={(val) => handleInputChange('obbiettivo', val)}
+      />
+
+      <CreateAccessibility 
+        isPublic={formState.accessibilita}
+        onChange={(val) => handleInputChange('accessibilita', val)}
       />
 
       <div className="w-full pt-8 pb-12 flex justify-center">

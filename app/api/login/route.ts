@@ -5,6 +5,22 @@ import path from "path";
 // Percorso database
 const dbPath = path.join(process.cwd(), "app/data/database.db");
 
+type LogopedistaDB = {
+  pIva: string;
+  nome: string;
+  cognome: string;
+  email: string;
+  password: string;
+};
+
+type PazienteDB = {
+  cf: string;
+  nome: string;
+  cognome: string;
+  email: string;
+  password: string;
+};
+
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
@@ -18,15 +34,13 @@ export async function POST(request: Request) {
 
     const db = new Database(dbPath);
 
-    // Controllo logopedista
+    // --- Controllo LOGOPEDISTA ---
     const logopedista = db
-      .prepare(
-        "SELECT * FROM Logopedista WHERE email = ? AND password = ?"
-      )
-      .get(email, password);
+      .prepare("SELECT * FROM Logopedista WHERE email = ? AND password = ?")
+      .get(email, password) as LogopedistaDB | undefined;
 
     if (logopedista) {
-      return NextResponse.json({
+      const userData = {
         ruolo: "logopedista",
         utente: {
           nome: logopedista.nome,
@@ -34,18 +48,26 @@ export async function POST(request: Request) {
           email: logopedista.email,
           pIva: logopedista.pIva,
         },
+      };
+
+      const response = NextResponse.json(userData);
+
+      response.cookies.set("utente", JSON.stringify(userData), {
+        httpOnly: true,
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
       });
+
+      return response;
     }
 
-    // Controllo paziente
+    // --- Controllo PAZIENTE ---
     const paziente = db
-      .prepare(
-        "SELECT * FROM Paziente WHERE email = ? AND password = ?"
-      )
-      .get(email, password);
+      .prepare("SELECT * FROM Paziente WHERE email = ? AND password = ?")
+      .get(email, password) as PazienteDB | undefined;
 
     if (paziente) {
-      return NextResponse.json({
+      const userData = {
         ruolo: "paziente",
         utente: {
           nome: paziente.nome,
@@ -53,7 +75,17 @@ export async function POST(request: Request) {
           email: paziente.email,
           cf: paziente.cf,
         },
+      };
+
+      const response = NextResponse.json(userData);
+
+      response.cookies.set("utente", JSON.stringify(userData), {
+        httpOnly: true,
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
       });
+
+      return response;
     }
 
     return NextResponse.json(
