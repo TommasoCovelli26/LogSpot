@@ -88,7 +88,7 @@ export default function AssignToPatient({ activityId }: { activityId: string }) 
         />
         <button
           onClick={() => fetchPatients(query)}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg font-bold"
+          className="px-4 py-2 bg-yellow-400 text-black rounded-lg font-bold"
         >
           Cerca
         </button>

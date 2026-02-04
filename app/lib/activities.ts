@@ -26,6 +26,9 @@ export interface ActivityDetail {
   fasciaEta: number;
   patologie: string;
   id_logopedista: string;
+  // MODIFICA 1: Aggiunti campi opzionali per il nome del creatore
+  nome_logopedista?: string;
+  cognome_logopedista?: string;
 }
 
 export async function fetchActivities(
@@ -34,8 +37,6 @@ export async function fetchActivities(
   filter: string = 'recenti'
 ): Promise<ActivityWithFavorite[]> {
   try {
-    // Base query
-    // Selezioniamo le attività e usiamo un LEFT JOIN per vedere se sono nei preferiti dell'utente
     let sql = `
       SELECT 
         A.cod, 
@@ -49,14 +50,11 @@ export async function fetchActivities(
 
     const params: any[] = [userId, userId];
 
-    // 1. Filtro Ricerca
     if (query) {
       sql += ` AND A.titolo LIKE ?`;
       params.push(`%${query}%`);
     }
 
-    // 2. Filtro Tab (Preferiti) - CORREZIONE QUI
-    // Invece di usare 'isFavorite', controlliamo se l'ID nella tabella unita esiste.
     if (filter === 'preferiti') {
       sql += ` AND P.id_attivita IS NOT NULL`;
     }
@@ -108,7 +106,6 @@ export async function fetchPublicActivities(
     }
 
     if (pathologies && pathologies.length > 0) {
-      // Filtriamo le attività che contengono almeno una delle patologie selezionate
       const pathologyConditions = pathologies.map(() => `A.patologie LIKE ?`).join(' OR ');
       sql += ` AND (${pathologyConditions})`;
       pathologies.forEach(pat => params.push(`%${pat}%`));
@@ -133,10 +130,17 @@ export async function fetchPublicActivities(
   }
 }
 
+// MODIFICA 2: Aggiornata la query per recuperare anche il nome del logopedista
 export async function fetchActivityById(id: string): Promise<ActivityDetail | null> {
   try {
     const stmt = db.prepare(`
-      SELECT * FROM Attivita WHERE cod = ?
+      SELECT 
+        Attivita.*,
+        Logopedista.nome AS nome_logopedista, 
+        Logopedista.cognome AS cognome_logopedista
+      FROM Attivita
+      LEFT JOIN Logopedista ON Attivita.id_logopedista = Logopedista.pIva
+      WHERE Attivita.cod = ?
     `);
     
     const activity = stmt.get(id) as ActivityDetail | undefined;
@@ -174,13 +178,11 @@ export async function fetchAssignedExercises(
 
     const params: any[] = [patientCf];
 
-    // Filtro ricerca
     if (query) {
       sql += ` AND A.titolo LIKE ?`;
       params.push(`%${query}%`);
     }
 
-    // Filtro per stato
     if (filter === 'completati') {
       sql += ` AND E.statoCompletamento = 'completato'`;
     } else if (filter === 'in-corso') {

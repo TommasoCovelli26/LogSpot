@@ -78,7 +78,7 @@ export default function Page() {
     <main className="w-full min-h-screen bg-white p-4 md:p-8">
       <div className="flex flex-col items-center w-full max-w-md mx-auto md:max-w-3xl">
         <header className="w-full mb-6 text-center md:text-left">
-          <h1 className={`${lusitana.className} text-3xl md:text-4xl text-blue-700 font-bold`}>
+          <h1 className={`${lusitana.className} text-3xl md:text-4xl text-yellow-400 font-bold`}>
             Ricerca materiali pubblici
           </h1>
           <p className="text-gray-500 mt-2">

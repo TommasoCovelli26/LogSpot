@@ -1,11 +1,12 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { cookies } from 'next/headers';
+// Rimossi i cookie che non servono più per il nome
 import {
   ArrowLeftIcon,
   UserCircleIcon,
   DocumentTextIcon,
-  PencilSquareIcon
+  PencilSquareIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 import { fetchActivityById } from '../../../lib/activities';
 import { lusitana } from '../../../ui/fonts';
@@ -23,21 +24,11 @@ export default async function PublicActivityDetailPage({
     notFound();
   }
 
-  // Recupera nome creatore dai cookie (fallback)
-  const cookieStore = await cookies();
-  const userCookie = cookieStore.get('utente');
-  let creatorName = 'Logopedista';
-
-  if (userCookie) {
-    try {
-      const userData = JSON.parse(userCookie.value);
-      if (userData?.utente) {
-        creatorName = `${userData.utente.nome} ${userData.utente.cognome}`;
-      }
-    } catch (e) {
-      console.error('Errore parsing cookie utente', e);
-    }
-  }
+  // --- ORA IL NOME VIENE DAL DB, NON DAI COOKIE ---
+  const creatorName = activity.nome_logopedista 
+    ? `${activity.nome_logopedista} ${activity.cognome_logopedista}`
+    : 'Utente LogSpot';
+  // ------------------------------------------------
 
   const patologieList = activity.patologie ? activity.patologie.split(',') : [];
   const allegatiList = activity.immagine ? activity.immagine.split('|') : [];
@@ -59,9 +50,10 @@ export default async function PublicActivityDetailPage({
           </h1>
 
           <span
-            className="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest border bg-green-50 text-green-700 border-green-200"
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest border bg-blue-50 text-blue-700 border-blue-200"
           >
-            Pubblica
+            <SparklesIcon className="w-4 h-4" />
+            Attività Community
           </span>
         </div>
       </div>
@@ -82,13 +74,13 @@ export default async function PublicActivityDetailPage({
           </div>
 
           <div className="bg-blue-50 rounded-2xl p-8 border border-blue-100">
-            <h3 className="text-sm font-bold text-blue-300 uppercase tracking-widest mb-4">
-              Obiettivo Terapeutico
-            </h3>
-            <p className="text-blue-900 font-medium text-xl italic leading-relaxed">
-              "{activity.istruzioni || 'Nessun obiettivo specificato.'}"
-            </p>
-          </div>
+                <h3 className="text-sm font-bold text-blue-300 uppercase tracking-widest mb-4">
+                    Obiettivo Terapeutico
+                </h3>
+                <p className="text-blue-900 font-medium text-xl italic leading-relaxed">
+                    "{activity.istruzioni || 'Nessun obiettivo specificato.'}"
+                </p>
+            </div>
         </div>
 
         <div className="space-y-6">
@@ -130,17 +122,20 @@ export default async function PublicActivityDetailPage({
             </div>
             <div>
               <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Creato da</p>
+              {/* QUI ORA LEGGE IL NOME REALE DAL DB */}
               <p className="text-sm font-bold text-gray-800">{creatorName}</p>
             </div>
           </div>
+
+          {/* TASTO ASSEGNA POSIZIONATO SOTTO IL NOME */}
+          <Link
+            href={`/logopedista/ricerca-materiali/${id}/assegna`}
+            className="flex items-center justify-center gap-2 px-4 py-4 border border-green-500 bg-green-50 text-black rounded-xl font-bold uppercase text-xs hover:bg-green-600 transition shadow-md tracking-wider w-full"
+          >
+            <PencilSquareIcon className="w-4 h-4" />
+            Assegna al paziente
+          </Link>
         </div>
-        <Link 
-                    href={`/logopedista/ricerca-materiali/${id}/assegna`}
-                    className="flex items-center gap-2 px-4 py-2 bg-yellow-400 text-black rounded-full font-bold uppercase text-xs hover:bg-yellow-500 transition shadow-md tracking-wider"
-                >
-                    <PencilSquareIcon className="w-4 h-4" />
-                    Assegna al paziente
-                </Link>
       </div>
     </main>
   );
