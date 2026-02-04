@@ -59,8 +59,8 @@ CREATE TABLE Esercizio (
     statoCompletamento TEXT,
     durata INTEGER, -- in secondi o minuti
     esito TEXT,
-    -- Relazione "Costituisce" (1:1 tra Attività ed Esercizio nello schema)
-    id_attivita INTEGER UNIQUE NOT NULL,
+    -- Relazione "Costituisce" (Attività -> Esercizio)
+    id_attivita INTEGER NOT NULL,
     -- Relazione "Somministra" (Logopedista -> Esercizio)
     id_logopedista VARCHAR(11) NOT NULL,
     -- Relazione "Svolge" (Paziente -> Esercizio)

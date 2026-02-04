@@ -43,7 +43,7 @@ INSERT INTO Materiale (tipo, immagine, domanda, risposta, rispFalsa, id_attivita
 INSERT INTO Esercizio (dataAssegnazione, statoCompletamento, durata, esito, id_attivita, id_logopedista, id_paziente) VALUES
 ('2026-01-01', 'completato', 10, 'positivo', 1, '12345678901', 'RSSMRA01A01H501A'),
 ('2026-01-02', 'in corso', 15, 'parziale', 2, '12345678902', 'BNCLGU02B02H501B'),
-('2026-01-03', 'completato', 20, 'positivo', 3, '12345678903', 'VRDANN03C03H501C'),
+('2026-01-03', 'completato', 20, 'positivo', 2, '12345678903', 'VRDANN03C03H501C'),
 ('2026-01-04', 'non iniziato', 10, 'nullo', 4, '12345678904', 'NRIPAO04D04H501D'),
 ('2026-01-05', 'completato', 12, 'positivo', 5, '12345678905', 'GLLSRA05E05H501E');
 
