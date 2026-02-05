@@ -5,9 +5,23 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
-  // Override default ignores of eslint-config-next.
+
+  // 🔧 Override regole troppo restrittive per il progetto
+  {
+    rules: {
+      // Permetti any (necessario per DB, API, fetch, prototipo)
+      "@typescript-eslint/no-explicit-any": "off",
+
+      // Evita warning inutili su setState in useEffect
+      "react-hooks/set-state-in-effect": "off",
+
+      // Evita errori su apostrofi e virgolette nel JSX
+      "react/no-unescaped-entities": "off",
+    },
+  },
+
+  // Ignora cartelle di build
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
     "build/**",
