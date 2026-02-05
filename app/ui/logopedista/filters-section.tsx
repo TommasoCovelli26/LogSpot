@@ -16,15 +16,15 @@ export default function FiltersSection() {
         className="w-full bg-gray-50 hover:bg-gray-100 rounded-2xl p-4 border border-gray-200 transition-colors flex items-center justify-between group"
       >
         <div className="flex items-center gap-3">
-          <FunnelIcon className="w-5 h-5 text-gray-500 group-hover:text-blue-600 transition-colors" />
+          <FunnelIcon className="w-5 h-5 text-gray-500 group-hover:text-yellow-500 transition-colors" />
           <span className="text-lg font-bold text-gray-700 uppercase tracking-wider">
             Filtri avanzati
           </span>
         </div>
         {isExpanded ? (
-          <ChevronUpIcon className="w-5 h-5 text-gray-500 group-hover:text-blue-600 transition-colors" />
+          <ChevronUpIcon className="w-5 h-5 text-gray-500 group-hover:text-yellow-500 transition-colors" />
         ) : (
-          <ChevronDownIcon className="w-5 h-5 text-gray-500 group-hover:text-blue-600 transition-colors" />
+          <ChevronDownIcon className="w-5 h-5 text-gray-500 group-hover:text-yellow-500    transition-colors" />
         )}
       </button>
 

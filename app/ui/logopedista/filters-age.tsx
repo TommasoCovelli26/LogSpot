@@ -38,13 +38,13 @@ export default function FiltersAge() {
           onChange={(e) => handleAgeChange(parseInt(e.target.value))}
           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer z-10"
           style={{
-            background: `linear-gradient(to right, #3B82F6 0%, #3B82F6 ${(currentAge / maxAge) * 100}%, #e5e7eb ${(currentAge / maxAge) * 100}%, #e5e7eb 100%)`
+            background: `linear-gradient(to right, #e1ff00 0%, #e1ff00 ${(currentAge / maxAge) * 100}%, #e5e7eb ${(currentAge / maxAge) * 100}%, #e5e7eb 100%)`
           }}
         />
 
         {currentAge > 0 && (
           <div
-            className="absolute top-0 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-xs shadow-md pointer-events-none transition-all duration-75 z-20"
+            className="absolute top-0 w-8 h-8 bg-yellow-500 text-black rounded-full flex items-center justify-center font-bold text-xs shadow-md pointer-events-none transition-all duration-75 z-20"
             style={{
               left: `calc(${(currentAge / maxAge) * 100}% - 16px)`,
               top: '-10px'

@@ -52,7 +52,7 @@ export default function FiltersPathology() {
         <input
           type="text"
           placeholder="CERCA..."
-          className="w-full pl-12 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-blue-400 outline-none transition text-sm font-medium placeholder-gray-400 shadow-sm"
+          className="w-full pl-12 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-yellow-400 outline-none transition text-sm font-medium placeholder-gray-400 shadow-sm"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -67,7 +67,7 @@ export default function FiltersPathology() {
               onClick={() => handleToggle(pat)}
               className={`px-6 py-2 rounded-full text-xs font-bold border transition uppercase tracking-wide ${
                 isSelected
-                  ? 'bg-blue-500 border-blue-500 text-white shadow-md transform scale-105'
+                  ? 'bg-yellow-500 border-yellow-500 text-black shadow-md transform scale-105'
                   : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-black'
               }`}
             >
