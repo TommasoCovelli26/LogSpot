@@ -1,11 +1,12 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-import { cookies } from 'next/headers'; // <--- 1. Importiamo i cookies
+import { cookies } from 'next/headers';
 import { 
   ArrowLeftIcon, 
   UserCircleIcon,
   DocumentTextIcon,
-  PencilSquareIcon
+  PencilSquareIcon,
+  UserPlusIcon
 } from '@heroicons/react/24/outline';
 import { fetchActivityById } from '../../../lib/activities';
 import { lusitana } from '../../../ui/fonts';
@@ -162,6 +163,16 @@ export default async function ActivityDetailPage({
                 </div>
             </div>
 
+            {/* --- TASTO ASSEGNA --- */}
+            <Link
+                href={`/logopedista/imieimateriali/${id}/assegna`}
+                className="flex items-center justify-center gap-2 px-4 py-4 border-2 border-green-200 bg-green-100 text-black rounded-xl font-bold uppercase text-xs hover:bg-green-500 transition shadow-md tracking-wider w-full mt-4"
+            >
+                <UserPlusIcon className="w-4 h-4" />
+                Assegna al paziente
+            </Link>
+
+            {/* --- TASTO ELIMINA --- */}
             <DeleteActivityButton id={activity.cod} />
 
         </div>

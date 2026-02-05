@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers'; // <--- IMPORTANTE
+import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 
 // --- Funzione Helper per ottenere l'ID utente ---
@@ -149,6 +149,52 @@ export async function unassignPatient(cf: string) {
 }
 
 /* =====================================================
+   ASSEGNAZIONE ATTIVITÀ PAZIENTI
+===================================================== */
+
+export async function assignExerciseToPatient(patientCf: string, activityId: number) {
+  // 1. Recupera ID logopedista dai COOKIE
+  const cookieStore = await cookies();
+  const userCookie = cookieStore.get('utente');
+  
+  if (!userCookie) return { success: false, message: "Utente non loggato" };
+  
+  let logopedistaId = '';
+  try {
+    const userData = JSON.parse(userCookie.value);
+    logopedistaId = userData.utente?.pIva;
+  } catch (e) {
+    return { success: false, message: "Errore lettura cookie" };
+  }
+
+  if (!logopedistaId) return { success: false, message: "Dati utente non validi" };
+
+  try {
+    // 2. Inserimento nel DB
+    db.prepare(`
+      INSERT INTO Esercizio (id_paziente, id_attivita, id_logopedista, dataAssegnazione, statoCompletamento, esito)
+      VALUES (?, ?, ?, DATE('now'), 'da-svolgere', '')
+    `).run(patientCf, activityId, logopedistaId);
+
+    // 3. AGGIORNA LA CACHE (La parte importante)
+    // Aggiorna la lista generale
+    revalidatePath('/logopedista/lista-pazienti');
+    
+    // Aggiorna la pagina specifica del paziente (QUESTA MANCAVA)
+    revalidatePath(`/logopedista/lista-pazienti/dettaglio-paziente/${patientCf}`);
+
+    return { success: true, message: "Esercizio assegnato con successo!" };
+
+  } catch (error: any) {
+    console.error("Errore DB:", error);
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return { success: false, message: "Questo esercizio è già assegnato." };
+    }
+    return { success: false, message: "Errore durante l'assegnazione." };
+  }
+}
+
+/* =====================================================
    ELIMINAZIONE ATTIVITÀ
 ===================================================== */
 
@@ -229,5 +275,23 @@ export async function updateActivity(id: number, formData: any) {
   } catch (error) {
     console.error('Errore aggiornamento attività:', error);
     return { success: false, message: 'Errore durante l\'aggiornamento' };
+  }
+}
+
+export async function removeAssignedExercise(exerciseId: number, patientCf: string) {
+  try {
+    // Elimina la riga dalla tabella Esercizio
+    const info = db.prepare('DELETE FROM Esercizio WHERE id = ?').run(exerciseId);
+
+    if (info.changes > 0) {
+      // Aggiorna la cache della pagina del paziente
+      revalidatePath(`/logopedista/lista-pazienti/dettaglio-paziente/${patientCf}`);
+      return { success: true, message: "Attività rimossa dal paziente." };
+    } else {
+      return { success: false, message: "Esercizio non trovato." };
+    }
+  } catch (error) {
+    console.error("Errore rimozione esercizio:", error);
+    return { success: false, message: "Errore durante la rimozione." };
   }
 }

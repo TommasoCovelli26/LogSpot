@@ -1,128 +1,125 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { assignExerciseToPatient } from '@/lib/actions';
 
-export default function AssignToPatient({ activityId }: { activityId: string }) {
+interface Patient {
+  cf: string;
+  nome: string;
+  cognome: string;
+}
+
+interface Props {
+  // Accetta sia numeri che stringhe per compatibilità
+  activityId: number | string;
+  // ORA È OBBLIGATORIO: Riceve la lista pazienti dal genitore
+  patients: Patient[];
+}
+
+export default function AssignToPatient({ activityId, patients }: Props) {
+  const router = useRouter();
   const [query, setQuery] = useState('');
-  const [patients, setPatients] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [filteredPatients, setFilteredPatients] = useState<Patient[]>(patients || []);
   const [assignedIds, setAssignedIds] = useState<Record<string, boolean>>({});
+  const [message, setMessage] = useState<string | null>(null);
+  const [isAssigning, setIsAssigning] = useState(false);
 
-  const getPIvaFromLocal = () => {
-    try {
-      const s = localStorage.getItem('utente');
-      if (!s) return null;
-      const obj = JSON.parse(s);
-      return obj.codice || obj?.utente?.codice || null;
-    } catch (e) {
-      return null;
-    }
-  };
-
-  const fetchPatients = async (q = '') => {
-    const pIva = getPIvaFromLocal();
-    if (!pIva) {
-      setMessage('Logopedista non autenticato');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/lista-pazienti?pIva=${encodeURIComponent(pIva)}&q=${encodeURIComponent(q)}`);
-      const data = await res.json();
-      if (res.ok) setPatients(data);
-      else setMessage(data.error || 'Errore nel recupero pazienti');
-    } catch (e) {
-      setMessage('Errore di rete');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Filtra i pazienti quando scrivi nella barra di ricerca
   useEffect(() => {
-    fetchPatients();
-  }, []);
+    if (!patients) return;
+    
+    if (query.trim() === '') {
+      setFilteredPatients(patients);
+    } else {
+      const lowerQ = query.toLowerCase();
+      const filtered = patients.filter(p => 
+        p.nome.toLowerCase().includes(lowerQ) || 
+        p.cognome.toLowerCase().includes(lowerQ) ||
+        p.cf.toLowerCase().includes(lowerQ)
+      );
+      setFilteredPatients(filtered);
+    }
+  }, [query, patients]);
 
   const handleAssign = async (cf: string) => {
+    if (isAssigning) return;
+    setIsAssigning(true);
     setMessage(null);
-    const pIva = getPIvaFromLocal();
-    if (!pIva) {
-      setMessage('Logopedista non autenticato');
-      return;
-    }
+    
+    // Server Action per assegnare
+    const result = await assignExerciseToPatient(cf, Number(activityId));
 
-    try {
-      const res = await fetch('/api/esercizi/assign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cf, id_attivita: activityId, pIva })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setMessage('Attività assegnata con successo');
-        // disabilita il pulsante per questo paziente
-        setAssignedIds((s) => ({ ...s, [cf]: true }));
-      } else {
-        setMessage(data.error || 'Errore assegnazione');
-        if (res.status === 409) {
-          // Se conflitto (attività già assegnata globalmente), disabilitiamo i pulsanti
-          setAssignedIds((s) => ({ ...s, [cf]: true }));
-        }
+    if (result.success) {
+      setMessage('Attività assegnata con successo!');
+      setAssignedIds((prev) => ({ ...prev, [cf]: true }));
+      router.refresh(); 
+    } else {
+      setMessage(result.message || 'Errore durante l\'assegnazione.');
+      if (result.message?.includes('già assegnato')) {
+        setAssignedIds((prev) => ({ ...prev, [cf]: true }));
       }
-    } catch (e) {
-      setMessage('Errore di rete');
     }
+    setIsAssigning(false);
   };
 
   return (
     <div className="w-full">
-      <label className="block text-sm font-bold text-gray-500 mb-2 uppercase tracking-wider">Assegna a paziente</label>
+      <label className="block text-sm font-bold text-gray-500 mb-2 uppercase tracking-wider">
+        Assegna a paziente
+      </label>
 
+      {/* BARRA DI RICERCA (Stile Originale) */}
       <div className="flex gap-2 mb-4">
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Cerca per nome o cognome"
-          className="flex-1 pl-4 pr-3 py-2 rounded-lg border border-gray-200"
+          className="flex-1 pl-4 pr-3 py-2 rounded-lg border border-gray-200 outline-none focus:border-yellow-400 transition"
         />
         <button
-          onClick={() => fetchPatients(query)}
-          className="px-4 py-2 bg-yellow-400 text-black rounded-lg font-bold"
+          className="px-4 py-2 bg-yellow-400 text-black rounded-lg font-bold hover:bg-yellow-500 transition"
         >
           Cerca
         </button>
       </div>
 
-      {loading ? (
-        <div className="text-sm text-gray-500">Caricamento pazienti...</div>
-      ) : (
-        <div className="space-y-2">
-          {patients.length === 0 ? (
-            <div className="text-sm text-gray-400 italic">Nessun paziente trovato.</div>
-          ) : (
-            patients.map((p) => (
-              <div key={p.cf} className="flex items-center justify-between bg-white border rounded-lg p-3">
-                <div>
-                  <div className="font-bold">{p.nome} {p.cognome}</div>
-                  <div className="text-xs text-gray-500">{p.cf} • {p.email || p.numTelefono}</div>
-                </div>
-                <div>
-                  <button
-                    onClick={() => handleAssign(p.cf)}
-                    disabled={!!assignedIds[p.cf]}
-                    className={`px-3 py-1 rounded-full font-bold text-sm ${assignedIds[p.cf] ? 'bg-gray-300 text-gray-600 cursor-not-allowed' : 'bg-yellow-400 text-black'}`}
-                  >
-                    {assignedIds[p.cf] ? 'Assegnato' : 'Assegna'}
-                  </button>
-                </div>
+      {/* LISTA PAZIENTI (Stile Originale) */}
+      <div className="space-y-2 max-h-80 overflow-y-auto">
+        {filteredPatients.length === 0 ? (
+          <div className="text-sm text-gray-400 italic">Nessun paziente trovato.</div>
+        ) : (
+          filteredPatients.map((p) => (
+            <div key={p.cf} className="flex items-center justify-between bg-white border border-gray-100 rounded-lg p-3 hover:border-yellow-200 transition shadow-sm">
+              <div>
+                <div className="font-bold text-gray-800">{p.nome} {p.cognome}</div>
+                <div className="text-xs text-gray-500">{p.cf}</div>
               </div>
-            ))
-          )}
+              <div>
+                <button
+                  onClick={() => handleAssign(p.cf)}
+                  disabled={!!assignedIds[p.cf] || isAssigning}
+                  className={`px-4 py-1.5 rounded-full font-bold text-xs uppercase tracking-wide transition ${
+                    assignedIds[p.cf] 
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
+                      : 'bg-yellow-400 text-black hover:bg-yellow-500 shadow-sm'
+                  }`}
+                >
+                  {assignedIds[p.cf] ? 'Assegnato' : 'Assegna'}
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {message && (
+        <div className={`mt-4 p-3 rounded-lg text-sm text-center font-bold ${
+          message.includes('successo') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
+        }`}>
+          {message}
         </div>
       )}
-
-      {message && <div className="mt-3 text-sm text-center text-gray-700">{message}</div>}
     </div>
   );
 }

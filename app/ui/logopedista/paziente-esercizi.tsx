@@ -1,56 +1,77 @@
-import { lusitana } from '../fonts';
-import { formatDateToLocal } from '../../lib/utils';
-import { headers } from 'next/headers';
+'use client';
 
-export default async function PatientExercises({ cf, pIva }: { cf: string; pIva: string }) {
-  // Recuperiamo l'host corrente per costruire l'URL assoluto
-  const host = (await headers()).get('host');
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-  const baseUrl = `${protocol}://${host}`;
+import { 
+  CheckCircleIcon, 
+  ClockIcon, 
+  EyeIcon 
+} from '@heroicons/react/24/outline';
+import { AssignedExercise } from '@/lib/activities';
+import clsx from 'clsx';
+import Link from 'next/link';
 
-  const res = await fetch(`${baseUrl}/api/esercizi?cf=${cf}&pIva=${pIva}`, {
-    cache: 'no-store' 
-  });
+// Aggiungiamo patientCf alle props
+export default function PazienteEsercizi({ 
+  exercises, 
+  patientCf 
+}: { 
+  exercises: AssignedExercise[], 
+  patientCf: string 
+}) {
   
-  if (!res.ok) return <p className="text-2xl text-red-500">Errore nel caricamento esercizi.</p>;
-
-  const exercises = await res.json();
+  if (!exercises || !Array.isArray(exercises) || exercises.length === 0) {
+    return (
+      <div className="bg-white rounded-xl p-8 border border-gray-100 text-center">
+        <p className="text-gray-500 italic">Nessun esercizio assegnato a questo paziente.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="mt-10">
-      <h2 className={`${lusitana.className} text-3xl mb-8 text-blue-800 border-b-4 border-blue-200 pb-2`}>
-        Storico Esercizi
-      </h2>
-      <div className="grid gap-6">
-        {exercises.map((ex: any) => (
-          <div key={ex.id} className="p-8 bg-white rounded-2xl border-2 border-gray-200 shadow-lg">
-            <div className="flex justify-between items-center">
-              <div>
-                {/* Titolo Attività molto grande */}
-                <p className="text-2xl font-black text-gray-900 uppercase tracking-tight">{ex.titolo}</p>
-                <p className="text-xl text-gray-600 mt-3">
-                  Assegnato il: <span className="font-bold">{formatDateToLocal(ex.dataAssegnazione)}</span>
-                </p>
-              </div>
-              <div className="text-right flex flex-col items-end gap-3">
-                {/* Badge Stato XL */}
-                <span className={`px-6 py-2 rounded-full text-medium font-black ${
-                  ex.statoCompletamento === 'completato' 
-                    ? 'bg-green-200 text-green-800' 
-                    : 'bg-yellow-200 text-yellow-800'
-                }`}>
-                  {ex.statoCompletamento.toUpperCase()}
-                </span>
-                {ex.esito && (
-                  <p className="text-medium font-extrabold text-blue-600 italic">
-                    {ex.esito.toUpperCase()}
-                  </p>
-                )}
-              </div>
+    <div className="flex flex-col gap-4">
+      {exercises.map((exercise) => (
+        <div 
+          key={exercise.id} 
+          className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition hover:border-blue-200"
+        >
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              {/* MODIFICATO: Il link ora punta alla pagina specifica dell'esercizio assegnato */}
+              <Link 
+                href={`/logopedista/lista-pazienti/dettaglio-paziente/${patientCf}/esercizio/${exercise.id}`}
+                className="font-bold text-gray-800 text-lg hover:text-blue-600 hover:underline flex items-center gap-2 group"
+                title="Vedi dettagli assegnazione"
+              >
+                {exercise.titolo}
+                <EyeIcon className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+              </Link>
+            </div>
+            <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">
+              Assegnato il: {new Date(exercise.dataAssegnazione).toLocaleDateString('it-IT')}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className={clsx(
+              "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1",
+              {
+                'bg-green-100 text-green-700': exercise.statoCompletamento === 'completato',
+                'bg-yellow-100 text-yellow-800': exercise.statoCompletamento === 'in-corso' || !exercise.statoCompletamento,
+                'bg-gray-100 text-gray-600': exercise.statoCompletamento === 'da-svolgere',
+              }
+            )}>
+              {exercise.statoCompletamento === 'completato' ? (
+                <>
+                  <CheckCircleIcon className="w-4 h-4" /> Completato
+                </>
+              ) : (
+                <>
+                  <ClockIcon className="w-4 h-4" /> In Corso
+                </>
+              )}
             </div>
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
 }

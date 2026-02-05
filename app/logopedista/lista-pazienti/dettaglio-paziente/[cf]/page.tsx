@@ -4,7 +4,9 @@ import { formatDateToLocal } from '@/lib/utils';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import UnassignButton from '@/ui/logopedista/unassign-button';
+import { fetchAssignedExercises } from '@/lib/activities';
 import PatientExercises from '@/ui/logopedista/paziente-esercizi';
+import PazienteEsercizi from '@/ui/logopedista/paziente-esercizi';
 
 export default async function Page({ params }: { params: Promise<{ cf: string }> }) {
   const { cf } = await params;
@@ -13,6 +15,8 @@ export default async function Page({ params }: { params: Promise<{ cf: string }>
   if (!patient) {
     notFound();
   }
+
+  const exercises = await fetchAssignedExercises(cf);
 
   return (
     <div className="w-full">
@@ -52,7 +56,11 @@ export default async function Page({ params }: { params: Promise<{ cf: string }>
           </div>
         </div>
       </div>
-      <PatientExercises cf={cf} pIva="12345678901" />
+      <div className="mt-8">
+        <h2 className="text-xl font-bold mb-4">Esercizi Assegnati</h2>
+        {/* AGGIUNTO patientCf={cf} */}
+        <PazienteEsercizi exercises={exercises} patientCf={cf} />
+      </div>
 
     </div>
     
