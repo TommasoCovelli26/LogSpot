@@ -42,7 +42,6 @@ export default function ProgressiPazientePage() {
   // Calcolo Statistiche
   const total = exercises.length;
   const completed = exercises.filter(ex => ex.statoCompletamento === 'completato');
-  const positive = completed.filter(ex => ex.esito === 'positivo').length;
   const avgDuration = total > 0 
     ? (exercises.reduce((acc, curr) => acc + (curr.durata || 0), 0) / total).toFixed(1) 
     : 0;
@@ -60,11 +59,6 @@ export default function ProgressiPazientePage() {
           <p className="text-6xl font-black text-blue-900 mt-4 text-">
             {completed.length} <span className="text-3xl text-blue-400">/ {total}</span>
           </p>
-        </div>
-        
-        <div className="bg-green-50 p-10 rounded-3xl border-2 border-green-200 shadow-sm">
-          <p className="text-2xl text-green-700 font-bold uppercase tracking-wider">Esiti Positivi</p>
-          <p className="text-6xl font-black text-green-900 mt-4">{positive}</p>
         </div>
 
         <div className="bg-orange-50 p-10 rounded-3xl border-2 border-orange-200 shadow-sm">
@@ -87,13 +81,10 @@ export default function ProgressiPazientePage() {
               <div>
                 <p className="text-3xl font-bold text-gray-900">{ex.titolo}</p>
                 <p className="text-xl text-gray-500 mt-2">
-                  Svolta il: <span className="font-semibold">{formatDateToLocal(ex.dataAssegnazione)}</span>
+                  Assegnata il: <span className="font-semibold">{formatDateToLocal(ex.dataAssegnazione)}</span>
                 </p>
               </div>
               <div className="text-right">
-                <span className="text-3xl font-black text-green-600 italic uppercase">
-                  {ex.esito}
-                </span>
                 <p className="text-lg text-gray-400 mt-2">Durata sessione: {ex.durata} min</p>
               </div>
             </div>
