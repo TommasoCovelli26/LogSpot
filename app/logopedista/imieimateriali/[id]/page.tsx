@@ -8,7 +8,8 @@ import {
   PencilSquareIcon,
   UserPlusIcon
 } from '@heroicons/react/24/outline';
-import { fetchActivityById } from '../../../lib/activities';
+import { fetchActivityById, fetchCommentsByActivityId } from '../../../lib/activities';
+import CommentSection from '../../../ui/logopedista/comment-section';
 import { lusitana } from '../../../ui/fonts';
 import DeleteActivityButton from '../../../ui/logopedista/delete-button';
 import DetailImageViewer from '../../../ui/logopedista/detail-image-viewer';
@@ -19,6 +20,7 @@ export default async function ActivityDetailPage({
   params: Promise<{ id: string }> 
 }) {
   const { id } = await params;
+  const activityId = parseInt(id); // Converti l'ID in numero per fetchCommentsByActivityId
   const activity = await fetchActivityById(id);
 
   if (!activity) {
@@ -29,12 +31,14 @@ export default async function ActivityDetailPage({
   const cookieStore = await cookies();
   const userCookie = cookieStore.get('utente');
   let creatorName = "Utente Sconosciuto"; // Fallback
+  let currentPiva = '';
 
   if (userCookie) {
     try {
       const userData = JSON.parse(userCookie.value);
       if (userData?.utente) {
         creatorName = `${userData.utente.nome} ${userData.utente.cognome}`;
+        currentPiva = userData.utente.pIva;
       }
     } catch (e) {
       console.error("Errore parsing cookie utente", e);
@@ -44,6 +48,9 @@ export default async function ActivityDetailPage({
     // redirect('/login');
   }
   // -------------------------------------
+
+  // Recupera i commenti per questa attività
+  const comments = await fetchCommentsByActivityId(activityId);
 
   const patologieList = activity.patologie ? activity.patologie.split(',') : [];
   // Usa il separatore corretto '|' per le immagini
@@ -176,7 +183,20 @@ export default async function ActivityDetailPage({
             <DeleteActivityButton id={activity.cod} />
 
         </div>
+        
       </div>
+
+      {/* --- SEZIONE COMMENTI --- */}
+      <div className="max-w-5xl mx-auto mt-12 pb-12">
+        <CommentSection 
+          activityId={activityId} 
+          comments={comments} 
+          currentUserPiva={currentPiva} 
+          // Se accessibilita è true (pubblica), mostra il form. Altrimenti solo lettura.
+          isPublic={activity.accessibilita} 
+        />
+      </div>
+      
     </main>
   );
 }
