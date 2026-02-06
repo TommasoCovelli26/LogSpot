@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-// Rimossi i cookie che non servono più per il nome
+import { cookies } from 'next/headers';
 import {
   ArrowLeftIcon,
   UserCircleIcon,
@@ -8,7 +8,8 @@ import {
   PencilSquareIcon,
   SparklesIcon
 } from '@heroicons/react/24/outline';
-import { fetchActivityById } from '../../../lib/activities';
+import { fetchActivityById, fetchCommentsByActivityId } from '../../../lib/activities'; // Import fetchComments
+import CommentSection from '../../../ui/logopedista/comment-section'; // Import CommentSection
 import { lusitana } from '../../../ui/fonts';
 import DetailImageViewer from '../../../ui/logopedista/detail-image-viewer';
 
@@ -18,6 +19,7 @@ export default async function PublicActivityDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params;
+  const activityId = parseInt(id); // Conversione in numero per i commenti
   const activity = await fetchActivityById(id);
 
   if (!activity || !activity.accessibilita) {
@@ -29,6 +31,14 @@ export default async function PublicActivityDetailPage({
     ? `${activity.nome_logopedista} ${activity.cognome_logopedista}`
     : 'Utente LogSpot';
   // ------------------------------------------------
+
+  // --- RECUPERO COMMENTI E UTENTE ATTUALE (Per i commenti) ---
+  const comments = await fetchCommentsByActivityId(activityId);
+  const cookieStore = await cookies();
+  const userCookie = cookieStore.get('utente');
+  const userData = userCookie ? JSON.parse(userCookie.value) : {};
+  const currentPiva = userData.utente?.pIva || '';
+  // -----------------------------------------------------------
 
   const patologieList = activity.patologie ? activity.patologie.split(',') : [];
   const allegatiList = activity.immagine ? activity.immagine.split('|') : [];
@@ -74,13 +84,13 @@ export default async function PublicActivityDetailPage({
           </div>
 
           <div className="bg-blue-50 rounded-2xl p-8 border border-blue-100">
-                <h3 className="text-sm font-bold text-blue-300 uppercase tracking-widest mb-4">
-                    Obiettivo Terapeutico
-                </h3>
-                <p className="text-blue-900 font-medium text-xl italic leading-relaxed">
-                    "{activity.istruzioni || 'Nessun obiettivo specificato.'}"
-                </p>
-            </div>
+            <h3 className="text-sm font-bold text-blue-300 uppercase tracking-widest mb-4">
+              Obiettivo Terapeutico
+            </h3>
+            <p className="text-blue-900 font-medium text-xl italic leading-relaxed">
+              "{activity.istruzioni || 'Nessun obiettivo specificato.'}"
+            </p>
+          </div>
         </div>
 
         <div className="space-y-6">
@@ -137,6 +147,17 @@ export default async function PublicActivityDetailPage({
           </Link>
         </div>
       </div>
+
+      {/* --- SEZIONE COMMENTI (PUNTO 5) --- */}
+      <div className="max-w-5xl mx-auto mt-12 pb-12">
+        <CommentSection 
+          activityId={activityId} 
+          comments={comments} 
+          currentUserPiva={currentPiva} 
+          isPublic={true} // Qui è pubblica, quindi si può commentare
+        />
+      </div>
+
     </main>
   );
 }

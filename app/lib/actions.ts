@@ -295,3 +295,82 @@ export async function removeAssignedExercise(exerciseId: number, patientCf: stri
     return { success: false, message: "Errore durante la rimozione." };
   }
 }
+
+/* =====================================================
+   GESTIONE COMMENTI
+===================================================== */
+
+export async function addComment(activityId: number, message: string) {
+  const cookieStore = await cookies();
+  const userCookie = cookieStore.get('utente');
+  
+  if (!userCookie) return { success: false, message: "Non sei loggato" };
+  
+  try {
+    const userData = JSON.parse(userCookie.value);
+    const userId = userData.utente?.pIva;
+
+    db.prepare(`
+      INSERT INTO Commento (messaggio, data, id_logopedista, id_attivita)
+      VALUES (?, DATETIME('now'), ?, ?)
+    `).run(message, userId, activityId);
+
+    revalidatePath(`/logopedista/ricerca-materiali/${activityId}`);
+    revalidatePath(`/logopedista/imieimateriali/${activityId}`);
+    return { success: true };
+  } catch (e) {
+    console.error(e);
+    return { success: false, message: "Errore DB" };
+  }
+}
+
+export async function editComment(commentId: number, newMessage: string) {
+  const cookieStore = await cookies();
+  const userCookie = cookieStore.get('utente');
+
+  // CORREZIONE: Controllo se il cookie esiste
+  if (!userCookie) return { success: false, message: "Non sei loggato" };
+
+  try {
+    const userData = JSON.parse(userCookie.value);
+    const userId = userData.utente?.pIva;
+
+    const result = db.prepare(`
+      UPDATE Commento 
+      SET messaggio = ?, data = DATETIME('now')
+      WHERE cod = ? AND id_logopedista = ?
+    `).run(newMessage, commentId, userId);
+
+    if (result.changes === 0) return { success: false, message: "Non autorizzato o commento non trovato" };
+
+    return { success: true };
+  } catch (e) {
+    console.error(e);
+    return { success: false, message: "Errore modifica" };
+  }
+}
+
+export async function deleteComment(commentId: number) {
+  const cookieStore = await cookies();
+  const userCookie = cookieStore.get('utente');
+
+  // CORREZIONE: Controllo se il cookie esiste
+  if (!userCookie) return { success: false, message: "Non sei loggato" };
+
+  try {
+    const userData = JSON.parse(userCookie.value);
+    const userId = userData.utente?.pIva;
+
+    const result = db.prepare(`
+      DELETE FROM Commento 
+      WHERE cod = ? AND id_logopedista = ?
+    `).run(commentId, userId);
+
+    if (result.changes === 0) return { success: false, message: "Non autorizzato o commento non trovato" };
+
+    return { success: true };
+  } catch (e) {
+    console.error(e);
+    return { success: false, message: "Errore eliminazione" };
+  }
+}

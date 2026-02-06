@@ -97,7 +97,7 @@ export default async function Page({
         </Link>
       </div>
       <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
-        <Search placeholder="Cerca per codice fiscale, nome o cognome..." />
+        <Search placeholder="Cerca per codice fiscale..." />
       </div>
       <Suspense key={query} fallback={<div className="mt-6 text-center py-10">Caricamento...</div>}>
         <UnassignedPatientsList query={query} pIva={pIva} />

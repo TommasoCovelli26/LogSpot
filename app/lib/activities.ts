@@ -16,6 +16,15 @@ export interface AssignedExercise {
   id_attivita: number;
 }
 
+export interface Comment {
+  cod: number;
+  messaggio: string;
+  data: string;
+  id_logopedista: string;
+  nome_logopedista: string;
+  cognome_logopedista: string;
+}
+
 export interface ActivityDetail {
   cod: number;
   titolo: string;
@@ -198,5 +207,28 @@ export async function fetchAssignedExercises(
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Impossibile recuperare gli esercizi assegnati.');
+  }
+}
+
+export async function fetchCommentsByActivityId(activityId: number): Promise<Comment[]> {
+  try {
+    const comments = db.prepare(`
+      SELECT 
+        C.cod,
+        C.messaggio,
+        C.data,
+        C.id_logopedista,
+        L.nome AS nome_logopedista,
+        L.cognome AS cognome_logopedista
+      FROM Commento C
+      JOIN Logopedista L ON C.id_logopedista = L.pIva
+      WHERE C.id_attivita = ?
+      ORDER BY C.data DESC
+    `).all(activityId) as any[];
+
+    return comments;
+  } catch (error) {
+    console.error('Errore fetch commenti:', error);
+    return [];
   }
 }

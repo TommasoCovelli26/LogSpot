@@ -87,9 +87,7 @@ CREATE TABLE Commento (
     cod INTEGER PRIMARY KEY AUTOINCREMENT,
     messaggio TEXT,
     data DATETIME DEFAULT CURRENT_TIMESTAMP,
-    -- Relazione "Pubblica" dal Logopedista
     id_logopedista VARCHAR(11) NOT NULL,
-    -- Relazione "Colleziona" dall'Attività
     id_attivita INTEGER NOT NULL,
     FOREIGN KEY (id_logopedista) REFERENCES Logopedista(pIva) ON DELETE CASCADE,
     FOREIGN KEY (id_attivita) REFERENCES Attivita(cod) ON DELETE CASCADE

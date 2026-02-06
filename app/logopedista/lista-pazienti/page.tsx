@@ -7,6 +7,7 @@ import { fetchPatients } from '@/lib/patients';
 import { Suspense, useEffect, useState, use } from 'react'; // Hook per la sessione
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
 
 // RIMOSSO 'async' qui sotto per compatibilità Client Component
 export default function Page(props: {
@@ -53,12 +54,20 @@ export default function Page(props: {
     <div className="w-full">
       <div className="flex w-full items-center justify-between">
         <h1 className={`${lusitana.className} text-2xl`}>Lista Pazienti</h1>
-        <Link 
-          href="/logopedista/lista-pazienti/accoppiamento-paziente" 
-          className="rounded-md bg-blue-600 px-4 py-2 text-white text-sm font-medium hover:bg-blue-700"
-        >
-          +
-        </Link>
+        <div className="flex gap-3">
+          <Link 
+            href="/logopedista/lista-pazienti/feedback" 
+            className="rounded-md bg-green-600 px-4 py-2 text-white text-sm font-medium hover:bg-green-700 flex items-center gap-2"
+          >
+            <ChatBubbleLeftIcon className="w-5 h-5" />
+          </Link>
+          <Link 
+            href="/logopedista/lista-pazienti/accoppiamento-paziente" 
+            className="rounded-md bg-blue-600 px-4 py-2 text-white text-sm font-medium hover:bg-blue-700"
+          >
+            +
+          </Link>
+        </div>
       </div>
       <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
         <Search placeholder="Cerca per nome o cognome..." />

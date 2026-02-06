@@ -24,6 +24,36 @@ export default function AssignToPatient({ activityId, patients }: Props) {
   const [assignedIds, setAssignedIds] = useState<Record<string, boolean>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [isAssigning, setIsAssigning] = useState(false);
+  const [isLoadingAssignments, setIsLoadingAssignments] = useState(true);
+
+  // Carica le assegnazioni esistenti all'avvio
+  useEffect(() => {
+    const loadAssignedPatients = async () => {
+      try {
+        const sessione = localStorage.getItem("utente");
+        if (!sessione) return;
+
+        const utenteObj = JSON.parse(sessione);
+        const pIva = utenteObj.codice;
+
+        const response = await fetch(`/api/esercizi/assign/${activityId}?pIva=${encodeURIComponent(pIva)}`);
+        if (response.ok) {
+          const data = await response.json();
+          const assigned: Record<string, boolean> = {};
+          data.assignedCFs.forEach((cf: string) => {
+            assigned[cf] = true;
+          });
+          setAssignedIds(assigned);
+        }
+      } catch (error) {
+        console.error('Errore nel caricamento delle assegnazioni:', error);
+      } finally {
+        setIsLoadingAssignments(false);
+      }
+    };
+
+    loadAssignedPatients();
+  }, [activityId]);
 
   // Filtra i pazienti quando scrivi nella barra di ricerca
   useEffect(() => {
@@ -98,14 +128,16 @@ export default function AssignToPatient({ activityId, patients }: Props) {
               <div>
                 <button
                   onClick={() => handleAssign(p.cf)}
-                  disabled={!!assignedIds[p.cf] || isAssigning}
+                  disabled={!!assignedIds[p.cf] || isAssigning || isLoadingAssignments}
                   className={`px-4 py-1.5 rounded-full font-bold text-xs uppercase tracking-wide transition ${
                     assignedIds[p.cf] 
-                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed' 
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                      : isLoadingAssignments
+                      ? 'bg-gray-200 text-gray-400 cursor-wait'
                       : 'bg-yellow-400 text-black hover:bg-yellow-500 shadow-sm'
                   }`}
                 >
-                  {assignedIds[p.cf] ? 'Assegnato' : 'Assegna'}
+                  {isLoadingAssignments ? '...' : assignedIds[p.cf] ? 'Assegnato' : 'Assegna'}
                 </button>
               </div>
             </div>

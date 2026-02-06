@@ -7,7 +7,8 @@ import {
   ArrowLeftIcon, 
   DocumentTextIcon,
   CheckCircleIcon,
-  ClockIcon
+  ClockIcon,
+  PaperAirplaneIcon
 } from '@heroicons/react/24/outline';
 import { lusitana } from '../../../ui/fonts';
 import DetailImageViewer from '../../../ui/logopedista/detail-image-viewer';
@@ -31,6 +32,9 @@ export default function ExerciseDetailPage() {
   const [exercise, setExercise] = useState<ExerciseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [newFeedback, setNewFeedback] = useState('');
+  const [sendingFeedback, setSendingFeedback] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -53,7 +57,20 @@ export default function ExerciseDetailPage() {
       }
     };
 
+    const fetchFeedbacks = async () => {
+      try {
+        const response = await fetch(`/api/esercizi/${id}/feedback`);
+        if (response.ok) {
+          const data = await response.json();
+          setFeedbacks(data);
+        }
+      } catch (error) {
+        console.error('Errore nel caricamento feedback:', error);
+      }
+    };
+
     fetchExercise();
+    fetchFeedbacks();
   }, [id, router]);
 
   const handleUpdateStatus = async (status: string) => {
@@ -79,6 +96,35 @@ export default function ExerciseDetailPage() {
       alert("Errore nell'aggiornamento dello stato");
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleSendFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFeedback.trim() || !id) return;
+
+    setSendingFeedback(true);
+    try {
+      const response = await fetch(`/api/esercizi/${id}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ messaggio: newFeedback }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Errore nell\'invio del feedback');
+      }
+
+      const savedFeedback = await response.json();
+      setFeedbacks([savedFeedback, ...feedbacks]);
+      setNewFeedback('');
+    } catch (error) {
+      console.error('Errore:', error);
+      alert('Errore nell\'invio del feedback');
+    } finally {
+      setSendingFeedback(false);
     }
   };
 
@@ -247,6 +293,70 @@ export default function ExerciseDetailPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* SEZIONE FEEDBACK */}
+      <div className="max-w-5xl mx-auto mt-12 pt-8 border-t border-gray-200">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">I Miei Feedback</h2>
+        
+        {/* FORM PER NUOVO FEEDBACK */}
+        <form onSubmit={handleSendFeedback} className="mb-8">
+          <div className="bg-white rounded-lg border-2 border-blue-200 p-6 shadow-sm">
+            <label htmlFor="feedback" className="block text-sm font-bold text-blue-700 uppercase tracking-wider mb-3">
+              Scrivi un feedback per il logopedista
+            </label>
+            <textarea
+              id="feedback"
+              value={newFeedback}
+              onChange={(e) => setNewFeedback(e.target.value)}
+              placeholder="Condividi la tua esperienza, difficoltà o domande sull'esercizio..."
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none text-gray-800"
+              rows={4}
+              disabled={sendingFeedback}
+            />
+            <div className="flex justify-end mt-4">
+              <button
+                type="submit"
+                disabled={sendingFeedback || !newFeedback.trim()}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-500 text-white rounded-lg font-bold uppercase text-sm hover:bg-blue-600 transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <PaperAirplaneIcon className="w-5 h-5" />
+                {sendingFeedback ? 'Invio...' : 'Invia Feedback'}
+              </button>
+            </div>
+          </div>
+        </form>
+
+        {/* LISTA FEEDBACK ESISTENTI */}
+        {feedbacks.length > 0 ? (
+          <div className="space-y-4">
+            {feedbacks.map((feedback: any) => (
+              <div key={feedback.cod} className="bg-blue-50 rounded-lg p-6 border border-blue-100">
+                <div className="flex justify-between items-start mb-2">
+                  <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider">
+                    Feedback
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(feedback.data).toLocaleDateString('it-IT', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+                <p className="text-gray-800 text-base leading-relaxed whitespace-pre-wrap">
+                  {feedback.messaggio || 'Nessun messaggio'}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-gray-50 rounded-lg p-8 text-center border border-gray-200">
+            <p className="text-gray-500 text-lg">Nessun feedback ancora inviato per questo esercizio.</p>
+          </div>
+        )}
       </div>
     </main>
   );

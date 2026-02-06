@@ -43,6 +43,17 @@ export default async function AssignedExercisePage({
   const patologieList = data.patologie ? data.patologie.split(',') : [];
   const allegatiList = data.immagine ? data.immagine.split('|') : [];
 
+  // Recuperiamo i feedback per questo esercizio
+  const feedbacks = db.prepare(`
+    SELECT 
+      cod,
+      messaggio,
+      data
+    FROM Feedback
+    WHERE id_esercizio = ? AND id_paziente = ?
+    ORDER BY data DESC
+  `).all(exerciseId, cf) as any[];
+
   return (
     <main className="w-full min-h-screen bg-white p-6 md:p-12 font-sans">
       
@@ -127,6 +138,41 @@ export default async function AssignedExercisePage({
             </div>
 
         </div>
+      </div>
+
+      {/* SEZIONE FEEDBACK */}
+      <div className="max-w-5xl mx-auto mt-12 pt-8 border-t border-gray-200">
+        <h2 className="text-2xl font-bold text-gray-900 mb-6">Feedback del Paziente</h2>
+        
+        {feedbacks && feedbacks.length > 0 ? (
+          <div className="space-y-4">
+            {feedbacks.map((feedback: any) => (
+              <div key={feedback.cod} className="bg-blue-50 rounded-lg p-6 border border-blue-100">
+                <div className="flex justify-between items-start mb-2">
+                  <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider">
+                    Feedback 
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(feedback.data).toLocaleDateString('it-IT', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </p>
+                </div>
+                <p className="text-gray-800 text-base leading-relaxed whitespace-pre-wrap">
+                  {feedback.messaggio || 'Nessun messaggio'}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-gray-50 rounded-lg p-8 text-center border border-gray-200">
+            <p className="text-gray-500 text-lg">Nessun feedback disponibile per questo esercizio.</p>
+          </div>
+        )}
       </div>
     </main>
   );
