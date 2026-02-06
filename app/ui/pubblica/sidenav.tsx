@@ -1,12 +1,25 @@
+"use client";
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import NavLinks from './nav-links'; // Riferimento relativo alla stessa cartella
 import { lusitana } from '../fonts'; // Riferimento relativo alla cartella superiore (app/ui/fonts.ts)
 
 export default function SideNav() {
+  const [utente, setUtente] = useState<any>(null);
+  const isLogopedista = utente?.ruolo === "logopedista";
+
+  useEffect(() => {
+    const u = localStorage.getItem("utente");
+    if (u) setUtente(JSON.parse(u));
+  }, []);
+
   return (
     <div className="flex h-full flex-col px-3 py-4 md:px-2">
       <Link
-        className="mb-2 flex h-20 items-end justify-start rounded-md bg-blue-800 p-4 md:h-40"
+        className={`mb-2 flex h-20 items-end justify-start rounded-md p-4 md:h-40 ${
+          isLogopedista ? "bg-yellow-500" : "bg-blue-800"
+        }`}
         href="/"
       >
         <div className={`w-32 text-white md:w-40 ${lusitana.className} text-2xl font-bold`}>

@@ -20,6 +20,7 @@ export async function GET(
         E.id,
         E.dataAssegnazione,
         E.statoCompletamento,
+        E.durata,
         E.esito,
         A.titolo,
         A.descrizione,
@@ -58,11 +59,23 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const { statoCompletamento } = await request.json();
+    const body = await request.json();
+    const updates: string[] = [];
+    const paramsList: Array<string | number | null> = [];
 
-    if (!statoCompletamento) {
+    if (Object.prototype.hasOwnProperty.call(body, 'statoCompletamento')) {
+      updates.push('statoCompletamento = ?');
+      paramsList.push(body.statoCompletamento ?? null);
+    }
+
+    if (Object.prototype.hasOwnProperty.call(body, 'durata')) {
+      updates.push('durata = ?');
+      paramsList.push(body.durata ?? null);
+    }
+
+    if (updates.length === 0) {
       return NextResponse.json(
-        { error: 'Stato completamento obbligatorio' },
+        { error: 'Nessun campo da aggiornare' },
         { status: 400 }
       );
     }
@@ -71,12 +84,12 @@ export async function PATCH(
 
     // Aggiorna lo stato dell'esercizio
     const stmt = db.prepare(`
-      UPDATE Esercizio 
-      SET statoCompletamento = ?
+      UPDATE Esercizio
+      SET ${updates.join(', ')}
       WHERE id = ?
     `);
 
-    const result = stmt.run(statoCompletamento, id);
+    const result = stmt.run(...paramsList, id);
 
     if (result.changes === 0) {
       return NextResponse.json(
