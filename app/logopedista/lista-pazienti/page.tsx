@@ -7,7 +7,7 @@ import { fetchPatients } from '@/lib/patients';
 import { Suspense, useEffect, useState, use } from 'react'; // Hook per la sessione
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
+import { ChatBubbleLeftIcon, PlusIcon } from '@heroicons/react/24/outline';
 
 // RIMOSSO 'async' qui sotto per compatibilità Client Component
 export default function Page(props: {
@@ -51,33 +51,52 @@ export default function Page(props: {
   }, [query, router]);
 
   return (
-    <div className="w-full">
-      <div className="flex w-full items-center justify-between">
-        <h1 className={`${lusitana.className} text-2xl`}>Lista Pazienti</h1>
-        <div className="flex gap-3">
-          <Link 
-            href="/logopedista/lista-pazienti/feedback" 
-            className="rounded-md bg-green-600 px-4 py-2 text-white text-sm font-medium hover:bg-green-700 flex items-center gap-2"
-          >
-            <ChatBubbleLeftIcon className="w-5 h-5" />
-          </Link>
-          <Link 
-            href="/logopedista/lista-pazienti/accoppiamento-paziente" 
-            className="rounded-md bg-blue-600 px-4 py-2 text-white text-sm font-medium hover:bg-blue-700"
-          >
-            +
-          </Link>
+    <main className="w-full min-h-screen bg-white p-4 md:p-8">
+      <div className="flex flex-col items-center w-full max-w-md mx-auto md:max-w-3xl">
+        
+        {/* Header con bottoni */}
+        <div className="w-full mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className={`${lusitana.className} text-3xl md:text-4xl text-blue-500 font-bold`}>
+              Lista Pazienti
+            </h1>
+            <p className="text-gray-500 mt-2">
+              Gestisci i tuoi pazienti e visualizza i loro progressi.
+            </p>
+          </div>
+          
+          <div className="flex gap-3">
+            <Link 
+              href="/logopedista/lista-pazienti/feedback" 
+              className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full font-bold uppercase text-xs hover:bg-green-600 transition shadow-md tracking-wider"
+            >
+              <ChatBubbleLeftIcon className="w-4 h-4" />
+              Feedback
+            </Link>
+            <Link 
+              href="/logopedista/lista-pazienti/accoppiamento-paziente" 
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-full font-bold uppercase text-xs hover:bg-blue-600 transition shadow-md tracking-wider"
+            >
+              <PlusIcon className="w-4 h-4" />
+              Nuovo Paziente
+            </Link>
+          </div>
         </div>
+
+        {/* Barra di Ricerca */}
+        <div className="w-full mb-6">
+          <Search placeholder="Cerca per nome o cognome..." />
+        </div>
+        
+        {/* Lista Pazienti */}
+        {isLoading ? (
+          <div className="text-center py-10 text-gray-500">Caricamento in corso...</div>
+        ) : (
+          <div className="w-full">
+            <PatientsTable patients={patients} />
+          </div>
+        )}
       </div>
-      <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
-        <Search placeholder="Cerca per nome o cognome..." />
-      </div>
-      
-      {isLoading ? (
-        <div className="mt-6 text-center py-10">Caricamento in corso...</div>
-      ) : (
-        <PatientsTable patients={patients} />
-      )}
-    </div>
+    </main>
   );
 }
