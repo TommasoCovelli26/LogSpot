@@ -42,8 +42,8 @@ export default function ProgressiPazientePage() {
   // Calcolo Statistiche
   const total = exercises.length;
   const completed = exercises.filter(ex => ex.statoCompletamento === 'completato');
-  const avgDuration = total > 0 
-    ? (exercises.reduce((acc, curr) => acc + (curr.durata || 0), 0) / total).toFixed(1) 
+  const avgDuration = completed.length > 0 
+    ? (completed.reduce((acc, curr) => acc + (curr.durata || 0), 0) / completed.length).toFixed(1) 
     : 0;
 
   if (isLoading) return <div className="p-10 text-3xl">Analisi progressi in corso...</div>;
@@ -53,15 +53,15 @@ export default function ProgressiPazientePage() {
       <h1 className={`${lusitana.className} text-5xl text-blue-900 mb-10`}>I Miei Traguardi</h1>
 
       {/* Sezione Statistiche a scritte grandi */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-        <div className="bg-blue-50 p-10 rounded-3xl border-2 border-blue-200 shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 max-w-4xl mx-auto">
+        <div className="bg-blue-50 p-10 rounded-3xl border-2 border-blue-200 shadow-sm text-center">
           <p className="text-2xl text-blue-700 font-bold uppercase tracking-wider">Esercizi Fatti</p>
           <p className="text-6xl font-black text-blue-900 mt-4 text-">
             {completed.length} <span className="text-3xl text-blue-400">/ {total}</span>
           </p>
         </div>
 
-        <div className="bg-orange-50 p-10 rounded-3xl border-2 border-orange-200 shadow-sm">
+        <div className="bg-orange-50 p-10 rounded-3xl border-2 border-orange-200 shadow-sm text-center">
           <p className="text-2xl text-orange-700 font-bold uppercase tracking-wider">Tempo Medio</p>
           <p className="text-6xl font-black text-orange-900 mt-4">
             {avgDuration} <span className="text-3xl text-orange-400">min</span>

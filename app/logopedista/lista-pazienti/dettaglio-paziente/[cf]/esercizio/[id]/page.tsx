@@ -150,7 +150,7 @@ export default async function AssignedExercisePage({
               <div key={feedback.cod} className="bg-blue-50 rounded-lg p-6 border border-blue-100">
                 <div className="flex justify-between items-start mb-2">
                   <p className="text-sm font-semibold text-blue-600 uppercase tracking-wider">
-                    Feedback #{feedback.cod}
+                    Feedback 
                   </p>
                   <p className="text-xs text-gray-500">
                     {new Date(feedback.data).toLocaleDateString('it-IT', {
