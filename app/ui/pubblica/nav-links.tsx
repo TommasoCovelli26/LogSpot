@@ -59,11 +59,18 @@ export default function NavLinks() {
     { name: 'Chi Siamo', href: '/chi-siamo', icon: InformationCircleIcon },
   ];
 
+  const linkChiSiamo = {
+    name: 'Chi Siamo',
+    href: '/chi-siamo',
+    icon: InformationCircleIcon,
+  };
+
   const linksLogopedista = [
     { name: 'Dashboard', href: '/dashboard', icon: RectangleStackIcon },
     { name: 'Pazienti', href: '/logopedista/lista-pazienti', icon: UserGroupIcon },
     { name: 'I miei materiali', href: '/logopedista/imieimateriali', icon: ClipboardDocumentListIcon },
     { name: 'Ricerca materiali', href: '/logopedista/ricerca-materiali', icon: MagnifyingGlassIcon },
+    linkChiSiamo,
     { name: 'Profilo', href: '/profilo', icon: UserCircleIcon },
   ];
 
@@ -71,13 +78,15 @@ export default function NavLinks() {
     { name: 'Dashboard', href: '/dashboard', icon: RectangleStackIcon },
     { name: 'I miei esercizi', href: '/paziente/esercizi', icon: ClipboardDocumentListIcon },
     { name: 'I miei Progressi', href: '/paziente/progressi', icon: ChartBarIcon },
+    linkChiSiamo,
     { name: 'Profilo', href: '/profilo', icon: UserCircleIcon },
   ];
 
   return (
     <>
       {/* LINK PUBBLICI */}
-      {linksPubblici.map((link) => {
+      {!utente &&
+        linksPubblici.map((link) => {
         const Icon = link.icon;
         return (
           <Link key={link.name} href={link.href} className={linkClass(link.href)}>
