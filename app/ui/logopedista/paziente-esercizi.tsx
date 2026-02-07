@@ -31,18 +31,18 @@ export default function PazienteEsercizi({
       {exercises.map((exercise) => (
         <div 
           key={exercise.id} 
-          className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition hover:border-blue-200"
+          className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition hover:border-yellow-400"
         >
           <div>
             <div className="flex items-center gap-2 mb-1">
               {/* MODIFICATO: Il link ora punta alla pagina specifica dell'esercizio assegnato */}
               <Link 
                 href={`/logopedista/lista-pazienti/dettaglio-paziente/${patientCf}/esercizio/${exercise.id}`}
-                className="font-bold text-gray-800 text-lg hover:text-blue-600 hover:underline flex items-center gap-2 group"
+                className="font-bold text-gray-800 text-lg hover:text-yellow-400 hover:underline flex items-center gap-2 group"
                 title="Vedi dettagli assegnazione"
               >
                 {exercise.titolo}
-                <EyeIcon className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                <EyeIcon className="w-5 h-5 text-gray-400 group-hover:text-yellow-400 transition-colors" />
               </Link>
             </div>
             <p className="text-xs text-gray-400 uppercase tracking-wider font-semibold">

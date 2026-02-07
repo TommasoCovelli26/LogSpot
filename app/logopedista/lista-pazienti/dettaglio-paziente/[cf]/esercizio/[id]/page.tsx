@@ -116,7 +116,7 @@ export default async function AssignedExercisePage({
             {/* Box Stato */}
             <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Stato Attuale</h3>
-                <p className={`text-xl font-bold uppercase ${data.statoCompletamento === 'completato' ? 'text-green-600' : 'text-yellow-600'}`}>
+                <p className={`text-xl font-bold uppercase ${data.statoCompletamento === 'completato' ? 'text-green-600' : 'text-yellow-400'}`}>
                    {data.statoCompletamento || 'Da Svolgere'}
                 </p>
             </div>

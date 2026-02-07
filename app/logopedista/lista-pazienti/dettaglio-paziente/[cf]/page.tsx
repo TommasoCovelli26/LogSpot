@@ -40,9 +40,9 @@ export default async function Page({ params }: { params: Promise<{ cf: string }>
 
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100 pb-6">
           <div className="flex items-center gap-4">
-            <UserCircleIcon className="w-12 h-12 text-blue-500" />
+            <UserCircleIcon className="w-12 h-12 text-yellow-400" />
             <div>
-              <h1 className={`${lusitana.className} text-4xl md:text-5xl font-bold text-blue-500`}>
+              <h1 className={`${lusitana.className} text-4xl md:text-5xl font-bold text-yellow-400`}>
                 {patient.cognome} {patient.nome}
               </h1>
               <p className="text-sm text-gray-500 font-mono mt-1">{patient.cf}</p>
@@ -60,7 +60,7 @@ export default async function Page({ params }: { params: Promise<{ cf: string }>
         {/* COLONNA SINISTRA - Esercizi Assegnati */}
         <div className="lg:col-span-2 space-y-8">
           <div className="bg-white rounded-[2rem] p-8 border-2 border-gray-100 shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-2 h-full bg-blue-400"></div>
+            <div className="absolute top-0 left-0 w-2 h-full bg-yellow-400"></div>
             <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
               <DocumentTextIcon className="w-5 h-5" /> Esercizi Assegnati
             </h3>
@@ -83,23 +83,23 @@ export default async function Page({ params }: { params: Promise<{ cf: string }>
           </div>
 
           {/* Email */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+          <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200 shadow-sm">
+            <h3 className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3 flex items-center gap-2">
               <EnvelopeIcon className="w-4 h-4" />
               Email
             </h3>
-            <p className="text-sm text-gray-800 break-words">
+            <p className="text-sm text-blue-900 break-words">
               {patient.email}
             </p>
           </div>
 
           {/* Telefono */}
-          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+          <div className="bg-blue-50 p-6 rounded-2xl border border-blue-200 shadow-sm">
+            <h3 className="text-xs font-bold text-blue-700 uppercase tracking-widest mb-3 flex items-center gap-2">
               <PhoneIcon className="w-4 h-4" />
               Telefono
             </h3>
-            <p className="text-sm text-gray-800">
+            <p className="text-sm text-blue-900">
               {patient.numTelefono || 'Non disponibile'}
             </p>
           </div>

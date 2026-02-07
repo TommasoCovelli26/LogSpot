@@ -57,7 +57,7 @@ export default function Page(props: {
         {/* Header con bottoni */}
         <div className="w-full mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className={`${lusitana.className} text-3xl md:text-4xl text-blue-500 font-bold`}>
+            <h1 className={`${lusitana.className} text-3xl md:text-4xl text-yellow-400 font-bold`}>
               Lista Pazienti
             </h1>
             <p className="text-gray-500 mt-2">
@@ -68,14 +68,14 @@ export default function Page(props: {
           <div className="flex gap-3">
             <Link 
               href="/logopedista/lista-pazienti/feedback" 
-              className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full font-bold uppercase text-xs hover:bg-green-600 transition shadow-md tracking-wider"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-full font-bold uppercase text-xs hover:bg-blue-600 transition shadow-md tracking-wider"
             >
               <ChatBubbleLeftIcon className="w-4 h-4" />
               Feedback
             </Link>
             <Link 
               href="/logopedista/lista-pazienti/accoppiamento-paziente" 
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-full font-bold uppercase text-xs hover:bg-blue-600 transition shadow-md tracking-wider"
+              className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-full font-bold uppercase text-xs hover:bg-green-600 transition shadow-md tracking-wider"
             >
               <PlusIcon className="w-4 h-4" />
               Nuovo Paziente

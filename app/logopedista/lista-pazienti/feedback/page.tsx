@@ -73,8 +73,8 @@ export default function FeedbackPage() {
         {/* Header */}
         <div className="w-full mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <ChatBubbleLeftIcon className="w-8 h-8 text-blue-500" />
-            <h1 className={`${lusitana.className} text-3xl md:text-4xl text-blue-500 font-bold`}>
+            <ChatBubbleLeftIcon className="w-8 h-8 text-yellow-400" />
+            <h1 className={`${lusitana.className} text-3xl md:text-4xl text-yellow-400 font-bold`}>
               Feedback Pazienti
             </h1>
           </div>
@@ -123,7 +123,7 @@ export default function FeedbackPage() {
                 <div className="mt-4 pt-4 border-t border-gray-100">
                   <Link
                     href={`/logopedista/lista-pazienti/dettaglio-paziente/${feedback.id_paziente}/esercizio/${feedback.id_esercizio}`}
-                    className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 transition"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-yellow-400 hover:text-yellow-500 transition"
                   >
                     Vai all'esercizio
                     <span>→</span>

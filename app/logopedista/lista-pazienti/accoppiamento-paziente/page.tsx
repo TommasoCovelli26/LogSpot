@@ -34,27 +34,27 @@ async function UnassignedPatientsList({ query, pIva }: { query: string; pIva: st
   }
 
   return (
-    <div className="mt-6 overflow-x-auto">
+    <div className="mt-6 overflow-x-auto bg-white rounded-2xl border border-gray-100 shadow-sm">
       <table className="w-full border-collapse">
         <thead>
-          <tr className="border-b bg-gray-100">
-            <th className="px-4 py-2 text-left text-sm font-semibold">Codice Fiscale</th>
-            <th className="px-4 py-2 text-left text-sm font-semibold">Nome</th>
-            <th className="px-4 py-2 text-left text-sm font-semibold">Cognome</th>
-            <th className="px-4 py-2 text-left text-sm font-semibold">Email</th>
-            <th className="px-4 py-2 text-left text-sm font-semibold">Telefono</th>
-            <th className="px-4 py-2 text-left text-sm font-semibold">Azioni</th>
+          <tr className="border-b bg-gray-50">
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Codice Fiscale</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Nome</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Cognome</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Email</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Telefono</th>
+            <th className="px-4 py-3 text-left text-xs font-bold text-gray-400 uppercase tracking-widest">Azioni</th>
           </tr>
         </thead>
         <tbody>
           {patients.map((patient) => (
             <tr key={patient.cf} className="border-b hover:bg-gray-50">
-              <td className="px-4 py-2 text-sm">{patient.cf}</td>
-              <td className="px-4 py-2 text-sm">{patient.nome}</td>
-              <td className="px-4 py-2 text-sm">{patient.cognome}</td>
-              <td className="px-4 py-2 text-sm">{patient.email}</td>
-              <td className="px-4 py-2 text-sm">{patient.numTelefono || '-'}</td>
-              <td className="px-4 py-2 text-sm">
+              <td className="px-4 py-3 text-sm text-gray-700">{patient.cf}</td>
+              <td className="px-4 py-3 text-sm text-gray-700">{patient.nome}</td>
+              <td className="px-4 py-3 text-sm text-gray-700">{patient.cognome}</td>
+              <td className="px-4 py-3 text-sm text-gray-700">{patient.email}</td>
+              <td className="px-4 py-3 text-sm text-gray-700">{patient.numTelefono || '-'}</td>
+              <td className="px-4 py-3 text-sm">
                 <form
                   action={async () => {
                     'use server';
@@ -63,7 +63,7 @@ async function UnassignedPatientsList({ query, pIva }: { query: string; pIva: st
                 >
                   <button
                     type="submit"
-                    className="rounded-md bg-green-600 px-3 py-1 text-white text-xs font-medium hover:bg-green-700"
+                    className="rounded-full bg-green-500 px-4 py-2 text-white text-xs font-bold uppercase tracking-wider hover:bg-green-600 transition shadow-md"
                   >
                     Abbina
                   </button>
@@ -89,19 +89,31 @@ export default async function Page({
   const pIva = '12345678901'; // TODO: get from session/auth
 
   return (
-    <div className="w-full">
-      <div className="flex w-full items-center justify-between">
-        <h1 className={`${lusitana.className} text-2xl`}>Accoppiamento Paziente</h1>
-        <Link href="/logopedista/lista-pazienti" className="rounded-md bg-gray-600 px-4 py-2 text-white text-sm font-medium hover:bg-gray-700">
-          Indietro
-        </Link>
+    <main className="w-full min-h-screen bg-white p-4 md:p-8">
+      <div className="flex flex-col items-center w-full max-w-md mx-auto md:max-w-3xl">
+        <div className="w-full mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className={`${lusitana.className} text-3xl md:text-4xl text-yellow-400 font-bold`}>
+              Accoppiamento Paziente
+            </h1>
+            <p className="text-gray-500 mt-2">
+              Cerca un paziente non assegnato e abbinalo al logopedista.
+            </p>
+          </div>
+          <Link
+            href="/logopedista/lista-pazienti"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-full font-bold uppercase text-xs hover:bg-gray-700 transition shadow-md tracking-wider"
+          >
+            Indietro
+          </Link>
+        </div>
+        <div className="w-full mb-6">
+          <Search placeholder="Cerca per codice fiscale..." />
+        </div>
+        <Suspense key={query} fallback={<div className="mt-6 text-center py-10 text-gray-500">Caricamento...</div>}>
+          <UnassignedPatientsList query={query} pIva={pIva} />
+        </Suspense>
       </div>
-      <div className="mt-4 flex items-center justify-between gap-2 md:mt-8">
-        <Search placeholder="Cerca per codice fiscale..." />
-      </div>
-      <Suspense key={query} fallback={<div className="mt-6 text-center py-10">Caricamento...</div>}>
-        <UnassignedPatientsList query={query} pIva={pIva} />
-      </Suspense>
-    </div>
+    </main>
   );
 }
