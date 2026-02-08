@@ -4,6 +4,7 @@ import { fetchUnassignedPatients } from '@/lib/patients';
 import { assignPatientToLogopedist } from '@/lib/actions';
 import { Suspense } from 'react';
 import Link from 'next/link';
+import { cookies } from 'next/headers'; // <--- IMPORTANTE: Importa cookies
 
 interface Patient {
   cf: string;
@@ -58,6 +59,7 @@ async function UnassignedPatientsList({ query, pIva }: { query: string; pIva: st
                 <form
                   action={async () => {
                     'use server';
+                    // Ora pIva è quella corretta passata dal componente padre
                     await assignPatientToLogopedist(patient.cf, pIva);
                   }}
                 >
@@ -86,7 +88,25 @@ export default async function Page({
 }) {
   const params = await searchParams;
   const query = params?.query || '';
-  const pIva = '12345678901'; // TODO: get from session/auth
+  
+  // --- FIX: RECUPERO P.IVA DAI COOKIE INVECE DI HARDCODED ---
+  const cookieStore = await cookies();
+  const userCookie = cookieStore.get('utente');
+  let pIva = '';
+
+  if (userCookie) {
+    try {
+      const userData = JSON.parse(userCookie.value);
+      pIva = userData.utente?.pIva || '';
+    } catch (error) {
+      console.error('Errore parsing cookie:', error);
+    }
+  }
+  // ----------------------------------------------------------
+
+  if (!pIva) {
+      return <div className="p-8 text-center text-red-500">Errore: Utente non identificato. Effettua nuovamente il login.</div>;
+  }
 
   return (
     <main className="w-full min-h-screen bg-white p-4 md:p-8">
