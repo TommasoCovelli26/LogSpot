@@ -5,7 +5,13 @@ import { HeartIcon as HeartOutline } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolid } from '@heroicons/react/24/solid';
 import { toggleFavorite } from '../../lib/actions';
 
-export default function FavoriteHeart({ cod, initialStatus }: { cod: number, initialStatus: boolean }) {
+type FavoriteHeartProps = {
+  cod: number;
+  initialStatus: boolean;
+  onToggle?: (cod: number, isFavorite: boolean) => void;
+};
+
+export default function FavoriteHeart({ cod, initialStatus, onToggle }: FavoriteHeartProps) {
   const [isFavorite, setIsFavorite] = useState(initialStatus);
 
   const handleClick = async () => {
@@ -15,6 +21,7 @@ export default function FavoriteHeart({ cod, initialStatus }: { cod: number, ini
     
     try {
       await toggleFavorite(cod, newStatus);
+      onToggle?.(cod, newStatus);
     } catch (e) {
       console.error("Errore preferiti");
       setIsFavorite(!newStatus); // Rollback

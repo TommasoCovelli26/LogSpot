@@ -10,10 +10,12 @@ const formatDate = (dateString: string) => {
 
 export default function MaterialsList({
   activities,
-  baseHref = '/logopedista/imieimateriali'
+  baseHref = '/logopedista/imieimateriali',
+  onFavoriteChange
 }: {
   activities: ActivityWithFavorite[];
   baseHref?: string;
+  onFavoriteChange?: (cod: number, isFavorite: boolean) => void;
 }) {
   return (
     <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -35,7 +37,11 @@ export default function MaterialsList({
               
               {/* 2. IL CUORE: Sta fuori dal Link, a sinistra */}
               <div className="pl-6 pr-2 z-10">
-                 <FavoriteHeart cod={act.cod} initialStatus={act.isFavorite} />
+                  <FavoriteHeart
+                   cod={act.cod}
+                   initialStatus={act.isFavorite}
+                   onToggle={onFavoriteChange}
+                  />
               </div>
 
               {/* 3. IL LINK: Avvolge solo il titolo e la data, riempie il resto della riga */}

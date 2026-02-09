@@ -211,7 +211,7 @@ export default function DashboardPage() {
               title="Ricerca Attività"
               description="Esplora attività riabilitative della community in modo mirato."
               summary="Applica filtri per obiettivi e patologie, valuta le proposte e salva ciò che è più pertinente."
-              href="/logopedista/esercizi"
+              href="/logopedista/ricerca-materiali"
             />
           </div>
           <div className="mt-8">

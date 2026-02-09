@@ -65,12 +65,15 @@ export default function RecentExercises({
                 key={exercise.id}
                 className="grid grid-cols-12 items-center py-3 text-sm"
               >
-                <span className="col-span-4 font-semibold text-gray-900">
+                <Link
+                  href={`/logopedista/lista-pazienti/dettaglio-paziente/${exercise.patientCf}/esercizio/${exercise.id}`}
+                  className="col-span-4 font-semibold text-gray-900 hover:text-blue-700"
+                >
                   {exercise.titolo || "Esercizio senza titolo"}
-                </span>
+                </Link>
                 <Link
                   href={`/logopedista/lista-pazienti/dettaglio-paziente/${exercise.patientCf}`}
-                  className="col-span-3 text-blue-600 hover:text-blue-700"
+                  className="col-span-3 font-semibold text-gray-900 hover:text-blue-700"
                 >
                   {exercise.patientName}
                 </Link>

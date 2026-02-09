@@ -111,6 +111,7 @@ export default function EditForm({ activity }: { activity: ActivityDetail }) {
   };
 
   const handleUpdate = async () => {
+    if (!formState.titolo) return alert("Inserisci almeno il titolo.");
     setIsSaving(true);
     const dataToSave = {
       ...formState,

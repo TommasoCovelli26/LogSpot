@@ -37,10 +37,11 @@ export default function FiltersAge() {
           value={currentAge}
           onChange={(e) => handleAgeChange(parseInt(e.target.value))}
           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer z-10"
+          title="Seleziona la fascia d'età"
           style={{
             background: `linear-gradient(to right, #e1ff00 0%, #e1ff00 ${(currentAge / maxAge) * 100}%, #e5e7eb ${(currentAge / maxAge) * 100}%, #e5e7eb 100%)`
-          }}
-        />
+          }}>
+        </input>
 
         {currentAge > 0 && (
           <div

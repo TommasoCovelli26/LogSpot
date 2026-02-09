@@ -8,6 +8,7 @@ import { lusitana } from '../fonts'; // Riferimento relativo alla cartella super
 export default function SideNav() {
   const [utente, setUtente] = useState<any>(null);
   const isLogopedista = utente?.ruolo === "logopedista";
+  const logoHref = utente ? "/dashboard" : "/";
 
   useEffect(() => {
     const u = localStorage.getItem("utente");
@@ -20,7 +21,7 @@ export default function SideNav() {
         className={`mb-2 flex h-20 items-end justify-start rounded-md p-4 md:h-40 ${
           isLogopedista ? "bg-yellow-500" : "bg-blue-800"
         }`}
-        href="/"
+        href={logoHref}
       >
         <div className={`w-32 text-white md:w-40 ${lusitana.className} text-2xl font-bold`}>
           LogSpot

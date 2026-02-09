@@ -74,6 +74,18 @@ export default function Page() {
     fetchActivities();
   }, [pIva, apiUrl]);
 
+  const handleFavoriteChange = (cod: number, isFavorite: boolean) => {
+    setActivities((prev) => {
+      if (filter === 'preferiti' && !isFavorite) {
+        return prev.filter((act) => act.cod !== cod);
+      }
+
+      return prev.map((act) =>
+        act.cod === cod ? { ...act, isFavorite } : act
+      );
+    });
+  };
+
   return (
     <main className="w-full min-h-screen bg-white p-4 md:p-8">
       <div className="flex flex-col items-center w-full max-w-md mx-auto md:max-w-3xl">
@@ -101,7 +113,11 @@ export default function Page() {
         ) : error ? (
           <div className="text-center py-10 text-red-500">{error}</div>
         ) : (
-          <MaterialsList activities={activities} baseHref="/logopedista/ricerca-materiali" />
+          <MaterialsList
+            activities={activities}
+            baseHref="/logopedista/ricerca-materiali"
+            onFavoriteChange={handleFavoriteChange}
+          />
         )}
       </div>
     </main>
