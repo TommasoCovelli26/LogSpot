@@ -1,48 +1,70 @@
+// Importa la funzione cookies per accedere ai cookie HTTP lato server
 import { cookies } from 'next/headers';
+// Importa l'istanza del database SQLite per query dirette
 import { db } from '@/lib/db';
+// Importa la funzione notFound per mostrare la pagina 404
 import { notFound } from 'next/navigation';
+// Importa il componente Link per la navigazione client-side
 import Link from 'next/link';
+// Importa l'icona freccia indietro da Heroicons
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+// Importa il font personalizzato Lusitana
 import { lusitana } from '@/ui/fonts';
+// Importa il componente AssignToPatient (riutilizzato dalla sezione ricerca materiali)
 import AssignToPatient from '../../../ricerca-materiali/[id]/assegna/AssignToPatient';
 
+/**
+ * Pagina di assegnazione di un materiale proprio a un paziente.
+ * Recupera l'attività, la lista dei pazienti del logopedista e mostra
+ * il componente AssignToPatient per effettuare l'assegnazione.
+ * Corrisponde alla route '/logopedista/imieimateriali/[id]/assegna'.
+ */
 export default async function AssignMyMaterialPage({ 
   params 
 }: { 
-  params: Promise<{ id: string }> 
+  params: Promise<{ id: string }>  // Parametri dinamici dell'URL (id dell'attività)
 }) {
+  // Estrae l'id dell'attività dai parametri dinamici della route
   const { id } = await params;
+  // Converte l'id in numero intero
   const activityId = parseInt(id);
 
-  // 1. Recupera ID Logopedista dai cookie
+  // 1. Recupera la P.IVA del logopedista dai cookie HTTP
   const cookieStore = await cookies();
   const userCookie = cookieStore.get('utente');
+  // Variabile per memorizzare l'ID del logopedista
   let logopedistaId = '';
   
+  // Se il cookie esiste, estrae la P.IVA dal JSON
   if (userCookie) {
      try {
        const userData = JSON.parse(userCookie.value);
+       // Estrae la P.IVA dell'utente loggato
        logopedistaId = userData.utente?.pIva || '';
      } catch (e) {
        console.error("Errore parsing cookie", e);
      }
   }
 
-  // 2. Preleva i pazienti (Fondamentale: li passiamo al componente per evitare l'errore)
+  // 2. Query diretta al database: recupera i pazienti associati al logopedista
+  // Seleziona cf, nome e cognome dalla tabella Paziente filtrata per id_logopedista
   const patients = db.prepare(`
     SELECT cf, nome, cognome 
     FROM Paziente 
     WHERE id_logopedista = ?
   `).all(logopedistaId) as any[];
 
-  // 3. Recupera dettagli attività
+  // 3. Recupera i dettagli dell'attività dal database
   const activity = db.prepare('SELECT * FROM Attivita WHERE cod = ?').get(activityId) as any;
 
+  // Se l'attività non esiste, mostra la pagina 404
   if (!activity) notFound();
 
   return (
+    // Container principale: sfondo bianco, padding responsivo
     <main className="w-full min-h-screen bg-white p-6 md:p-12 font-sans">
       <div className="max-w-3xl mx-auto mb-8">
+        {/* Link per tornare al dettaglio dell'attività */}
         <Link
           href={`/logopedista/imieimateriali/${id}`}
           className="inline-flex items-center gap-2 text-gray-500 hover:text-blue-600 transition mb-6 font-medium uppercase text-sm tracking-wider"
@@ -51,12 +73,15 @@ export default async function AssignMyMaterialPage({
           Torna al dettaglio
         </Link>
 
+        {/* Titolo dell'attività con font Lusitana */}
         <h1 className={`${lusitana.className} text-3xl md:text-4xl font-bold text-yellow-400 mb-4`}>
           {activity.titolo}
         </h1>
 
+        {/* Container del componente di assegnazione */}
         <div className="bg-white p-6 rounded-lg border border-gray-100">
-          {/* Passiamo activityId e patients. L'errore sparirà se AssignToPatient.tsx è aggiornato */}
+          {/* Componente riutilizzabile per assegnare l'attività ai pazienti */}
+          {/* Riceve l'ID dell'attività e la lista dei pazienti del logopedista */}
           <AssignToPatient activityId={activityId} patients={patients} />
         </div>
       </div>

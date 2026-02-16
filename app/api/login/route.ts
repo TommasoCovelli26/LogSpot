@@ -1,99 +1,129 @@
+// Importa NextResponse da Next.js per costruire risposte HTTP nelle API route
 import { NextResponse } from "next/server";
+// Importa la libreria better-sqlite3 per interagire con il database SQLite
 import Database from "better-sqlite3";
+// Importa il modulo 'path' di Node.js per costruire percorsi di file cross-platform
 import path from "path";
 
-// Percorso database
+// Costruisce il percorso assoluto al file del database SQLite
 const dbPath = path.join(process.cwd(), "app/data/database.db");
 
+// Tipo TypeScript che rappresenta la struttura di un record Logopedista nel database
 type LogopedistaDB = {
-  pIva: string;
-  nome: string;
-  cognome: string;
-  email: string;
-  password: string;
+  pIva: string;      // Partita IVA del logopedista (chiave primaria)
+  nome: string;      // Nome del logopedista
+  cognome: string;   // Cognome del logopedista
+  email: string;     // Email del logopedista
+  password: string;  // Password del logopedista
 };
 
+// Tipo TypeScript che rappresenta la struttura di un record Paziente nel database
 type PazienteDB = {
-  cf: string;
-  nome: string;
-  cognome: string;
-  email: string;
-  password: string;
+  cf: string;        // Codice fiscale del paziente (chiave primaria)
+  nome: string;      // Nome del paziente
+  cognome: string;   // Cognome del paziente
+  email: string;     // Email del paziente
+  password: string;  // Password del paziente
 };
 
+/**
+ * Handler POST per l'endpoint /api/login
+ * Gestisce l'autenticazione degli utenti (logopedisti e pazienti).
+ * Verifica le credenziali prima nella tabella Logopedista, poi nella tabella Paziente.
+ * Se le credenziali sono corrette, imposta un cookie HTTP-only con i dati dell'utente.
+ */
 export async function POST(request: Request) {
   try {
+    // Estrae email e password dal corpo della richiesta JSON
     const { email, password } = await request.json();
 
+    // Validazione: verifica che email e password siano presenti
     if (!email || !password) {
+      // Restituisce errore 400 (Bad Request) se mancano i campi obbligatori
       return NextResponse.json(
         { error: "Email e password obbligatorie" },
         { status: 400 }
       );
     }
 
+    // Apre una connessione al database SQLite
     const db = new Database(dbPath);
 
     // --- Controllo LOGOPEDISTA ---
+    // Cerca un logopedista nel database con email e password corrispondenti
     const logopedista = db
       .prepare("SELECT * FROM Logopedista WHERE email = ? AND password = ?")
       .get(email, password) as LogopedistaDB | undefined;
 
+    // Se un logopedista è stato trovato con le credenziali fornite
     if (logopedista) {
+      // Costruisce l'oggetto con i dati dell'utente autenticato e il suo ruolo
       const userData = {
-        ruolo: "logopedista",
+        ruolo: "logopedista",           // Imposta il ruolo come logopedista
         utente: {
-          nome: logopedista.nome,
-          cognome: logopedista.cognome,
-          email: logopedista.email,
-          pIva: logopedista.pIva,
+          nome: logopedista.nome,        // Nome del logopedista
+          cognome: logopedista.cognome,  // Cognome del logopedista
+          email: logopedista.email,      // Email del logopedista
+          pIva: logopedista.pIva,        // Partita IVA del logopedista
         },
       };
 
+      // Crea la risposta JSON con i dati dell'utente
       const response = NextResponse.json(userData);
 
+      // Imposta il cookie 'utente' con i dati serializzati in JSON
       response.cookies.set("utente", JSON.stringify(userData), {
-        httpOnly: true,
-        path: "/",
-        maxAge: 60 * 60 * 24 * 7,
+        httpOnly: true,              // Il cookie è accessibile solo lato server (non da JavaScript client)
+        path: "/",                   // Il cookie è valido per tutte le pagine del sito
+        maxAge: 60 * 60 * 24 * 7,   // Scadenza del cookie: 7 giorni (in secondi)
       });
 
+      // Restituisce la risposta con il cookie impostato
       return response;
     }
 
     // --- Controllo PAZIENTE ---
+    // Se non è stato trovato un logopedista, cerca un paziente con le stesse credenziali
     const paziente = db
       .prepare("SELECT * FROM Paziente WHERE email = ? AND password = ?")
       .get(email, password) as PazienteDB | undefined;
 
+    // Se un paziente è stato trovato con le credenziali fornite
     if (paziente) {
+      // Costruisce l'oggetto con i dati dell'utente autenticato e il suo ruolo
       const userData = {
-        ruolo: "paziente",
+        ruolo: "paziente",             // Imposta il ruolo come paziente
         utente: {
-          nome: paziente.nome,
-          cognome: paziente.cognome,
-          email: paziente.email,
-          cf: paziente.cf,
+          nome: paziente.nome,          // Nome del paziente
+          cognome: paziente.cognome,    // Cognome del paziente
+          email: paziente.email,        // Email del paziente
+          cf: paziente.cf,              // Codice fiscale del paziente
         },
       };
 
+      // Crea la risposta JSON con i dati dell'utente
       const response = NextResponse.json(userData);
 
+      // Imposta il cookie 'utente' con i dati serializzati in JSON
       response.cookies.set("utente", JSON.stringify(userData), {
-        httpOnly: true,
-        path: "/",
-        maxAge: 60 * 60 * 24 * 7,
+        httpOnly: true,              // Il cookie è accessibile solo lato server
+        path: "/",                   // Il cookie è valido per tutte le pagine
+        maxAge: 60 * 60 * 24 * 7,   // Scadenza del cookie: 7 giorni
       });
 
+      // Restituisce la risposta con il cookie impostato
       return response;
     }
 
+    // Se né logopedista né paziente sono stati trovati, le credenziali non sono valide
     return NextResponse.json(
       { error: "Credenziali non valide" },
-      { status: 401 }
+      { status: 401 }  // 401 Unauthorized: credenziali errate
     );
   } catch (error) {
+    // Logga l'errore nella console per il debug
     console.error("Errore login:", error);
+    // Restituisce errore 500 (Internal Server Error) in caso di eccezione
     return NextResponse.json(
       { error: "Errore interno del server" },
       { status: 500 }
