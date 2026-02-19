@@ -40,7 +40,6 @@ interface ExerciseDetail {
  * Pagina di dettaglio di un singolo esercizio per il paziente.
  * Componente Client che mostra tutti i dettagli dell'esercizio,
  * permette di aggiornare lo stato (in corso/completato) e di inviare feedback.
- * Corrisponde alla route '/paziente/esercizi/[id]'.
  */
 export default function ExerciseDetailPage() {
   // Hook per la navigazione programmatica

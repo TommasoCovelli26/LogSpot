@@ -19,7 +19,6 @@ import { db } from '@/lib/db';
  * Pagina di assegnazione di un'attività pubblica a un paziente.
  * Componente Server che recupera l'attività, i pazienti del logopedista
  * e mostra il componente AssignToPatient per effettuare l'assegnazione.
- * Corrisponde alla route '/logopedista/ricerca-materiali/[id]/assegna'.
  */
 export default async function AssignPage({
   params

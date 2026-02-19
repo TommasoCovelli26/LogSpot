@@ -9,7 +9,7 @@ import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useDebouncedCallback } from 'use-debounce';
 
 /**
- * Componente barra di ricerca per la pagina materiali.
+ * Componente barra di ricerca per la pagina i miei materiali.
  * Utilizza debounce (300ms) per evitare troppe navigazioni durante la digitazione.
  * Sincronizza la query di ricerca con i parametri URL.
  */

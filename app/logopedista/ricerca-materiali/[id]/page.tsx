@@ -25,7 +25,6 @@ import DetailImageViewer from '../../../ui/logopedista/detail-image-viewer';
  * Pagina di dettaglio di un'attività pubblica.
  * Componente Server che mostra la descrizione, le immagini, l'obiettivo,
  * le patologie, il creatore, i commenti e il pulsante per assegnare l'attività.
- * Corrisponde alla route '/logopedista/ricerca-materiali/[id]'.
  */
 export default async function PublicActivityDetailPage({
   params

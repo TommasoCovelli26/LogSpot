@@ -38,7 +38,7 @@ export default function CreateAge({ value, onChange }: { value: number, onChange
 
             {/* Indicatore circolare giallo che segue la posizione dello slider */}
             <div 
-                className="absolute top-0 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center font-bold text-xs shadow-md pointer-events-none transition-all duration-75 z-20"
+                className="absolute top-0 w-8 h-8 bg-yellow-400 rounded-full flex items-center justify-center font-bold text-xs shadow-md pointer-events-none transition-all duration-1 z-20"
                 style={{ 
                     // Posizione orizzontale calcolata in base al valore corrente
                     left: `calc(${((value / maxAge) * 100)}% - 16px)`,
@@ -50,6 +50,7 @@ export default function CreateAge({ value, onChange }: { value: number, onChange
             </div>
             
             {/* CSS personalizzato per nascondere il thumb nativo del range input */}
+            {/* Nasconde il thumb nativo dello slider per entrambi i browser WebKit (Chrome, Safari, Edge) e Firefox */}
             <style jsx>{`
                 input[type=range]::-webkit-slider-thumb {
                     -webkit-appearance: none;

@@ -17,7 +17,6 @@ import ExercisesListWrapper from '../../ui/paziente/exercises-list-wrapper';
  * Pagina "I Miei Esercizi" del paziente.
  * Componente Client che mostra la lista degli esercizi assegnati al paziente
  * con filtri per stato (tutti/in corso/completati) e ricerca testuale.
- * Corrisponde alla route '/paziente/esercizi'.
  */
 export default function Page() {
   // Hook per la navigazione programmatica
