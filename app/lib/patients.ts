@@ -1,8 +1,9 @@
 // Direttiva 'use server': indica a Next.js che questo modulo contiene funzioni eseguibili solo lato server
 'use server';
 
-// Importa l'istanza del database SQLite dal modulo db locale
-import { db } from '@/lib/db';
+import connectToDatabase from '@/lib/mongodb';
+import Paziente from '@/models/Paziente';
+import Logopedista from '@/models/Logopedista';
 
 // Interfaccia TypeScript che definisce la struttura di un oggetto Paziente
 export interface Patient {
@@ -14,6 +15,36 @@ export interface Patient {
   dataNascita: string | null;    // Data di nascita (opzionale, può essere null)
 }
 
+type PatientMongo = {
+  cf: string;
+  nome: string;
+  cognome: string;
+  email: string;
+  numTelefono?: string | null;
+  dataNascita?: Date | string | null;
+};
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeDate(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  if (typeof value === 'string') return value;
+  return value.toISOString();
+}
+
+function mapPatient(patient: PatientMongo): Patient {
+  return {
+    cf: patient.cf,
+    nome: patient.nome,
+    cognome: patient.cognome,
+    email: patient.email,
+    numTelefono: patient.numTelefono ?? null,
+    dataNascita: normalizeDate(patient.dataNascita),
+  };
+}
+
 /**
  * Recupera la lista dei pazienti assegnati a un determinato logopedista.
  * @param pIva - La Partita IVA del logopedista di cui recuperare i pazienti
@@ -22,33 +53,25 @@ export interface Patient {
  */
 export async function fetchPatients(pIva: string, query?: string): Promise<Patient[]> {
   try {
-    // Query SQL base: seleziona i dati del paziente filtrando per il logopedista assegnato
-    let sql = `
-      SELECT cf, nome, cognome, email, numTelefono, dataNascita
-      FROM Paziente
-      WHERE id_logopedista = ?
-    `;
-    // Array dei parametri per la query preparata; inizia con la P.IVA del logopedista
-    const params: any[] = [pIva];
+    await connectToDatabase();
 
-    // Se è presente un termine di ricerca non vuoto, aggiunge un filtro su nome o cognome
-    if (query && query.trim()) {
-      sql += ` AND (nome LIKE ? OR cognome LIKE ?)`;
-      // Crea il termine di ricerca con wildcard per la ricerca parziale (LIKE)
-      const searchTerm = `%${query}%`;
-      // Aggiunge il termine di ricerca due volte: una per il nome e una per il cognome
-      params.push(searchTerm, searchTerm);
+    const logopedista = await Logopedista.findOne({ pIva }).select('_id').lean();
+    if (!logopedista) return [];
+
+    const trimmedQuery = query?.trim();
+    const filters: any = { logopedista: logopedista._id };
+
+    if (trimmedQuery) {
+      const regex = new RegExp(escapeRegex(trimmedQuery), 'i');
+      filters.$or = [{ nome: regex }, { cognome: regex }];
     }
 
-    // Aggiunge l'ordinamento: prima per cognome, poi per nome, entrambi in ordine ascendente
-    sql += ` ORDER BY cognome ASC, nome ASC`;
+    const patients = await Paziente.find(filters)
+      .select('cf nome cognome email numTelefono dataNascita -_id')
+      .sort({ cognome: 1, nome: 1 })
+      .lean<PatientMongo[]>();
 
-    // Prepara la query SQL (compilazione preventiva per sicurezza e performance)
-    const stmt = db.prepare(sql);
-    // Esegue la query con i parametri e fa il cast del risultato al tipo Patient[]
-    const patients = stmt.all(...params) as Patient[];
-    // Restituisce l'array di pazienti trovati
-    return patients;
+    return patients.map(mapPatient);
   } catch (error) {
     // Logga l'errore nella console in caso di problemi con il database
     console.error('Error fetching patients:', error);
@@ -64,16 +87,13 @@ export async function fetchPatients(pIva: string, query?: string): Promise<Patie
  */
 export async function fetchPatientsByCf(cf: string): Promise<Patient | null> {
   try {
-    // Prepara la query SQL per selezionare un paziente specifico, filtrato per codice fiscale
-    const stmt = db.prepare(`
-      SELECT cf, nome, cognome, email, numTelefono, dataNascita
-      FROM Paziente
-      WHERE cf = ?
-    `);
-    // Esegue la query e recupera il primo risultato (get restituisce una sola riga)
-    const patient = stmt.get(cf) as Patient | undefined;
-    // Restituisce il paziente se trovato, altrimenti null
-    return patient || null;
+    await connectToDatabase();
+
+    const patient = await Paziente.findOne({ cf })
+      .select('cf nome cognome email numTelefono dataNascita -_id')
+      .lean<PatientMongo | null>();
+
+    return patient ? mapPatient(patient) : null;
   } catch (error) {
     // Logga l'errore nella console in caso di problemi
     console.error('Error fetching patient:', error);
@@ -89,36 +109,28 @@ export async function fetchPatientsByCf(cf: string): Promise<Patient | null> {
  */
 export async function fetchUnassignedPatients(query?: string): Promise<Patient[]> {
   try {
-    // Query SQL base: seleziona i pazienti che non hanno un logopedista assegnato (id_logopedista è NULL)
-    let sql = `
-      SELECT cf, nome, cognome, email, numTelefono, dataNascita
-      FROM Paziente
-      WHERE id_logopedista IS NULL
-    `;
-    // Array vuoto per i parametri della query
-    const params: any[] = [];
+    await connectToDatabase();
 
-    // Se è presente un termine di ricerca non vuoto, aggiunge un filtro su CF, nome o cognome
-    if (query && query.trim()) {
-      // Usa LOWER() per una ricerca case-insensitive su codice fiscale, nome e cognome
-      sql += ` AND (LOWER(cf) LIKE LOWER(?) OR LOWER(nome) LIKE LOWER(?) OR LOWER(cognome) LIKE LOWER(?))`;
-      // Crea il termine di ricerca con wildcard per la ricerca parziale
-      const searchTerm = `%${query}%`;
-      // Aggiunge il termine di ricerca tre volte: una per CF, una per nome, una per cognome
-      params.push(searchTerm, searchTerm, searchTerm);
+    const conditions: any[] = [
+      { $or: [{ logopedista: null }, { logopedista: { $exists: false } }] },
+    ];
+
+    const trimmedQuery = query?.trim();
+    if (trimmedQuery) {
+      const regex = new RegExp(escapeRegex(trimmedQuery), 'i');
+      conditions.push({
+        $or: [{ cf: regex }, { nome: regex }, { cognome: regex }],
+      });
     }
 
-    // Aggiunge l'ordinamento: prima per cognome, poi per nome, entrambi in ordine ascendente
-    sql += ` ORDER BY cognome ASC, nome ASC`;
+    const mongoQuery = conditions.length === 1 ? conditions[0] : { $and: conditions };
 
-    // Prepara la query SQL compilata
-    const stmt = db.prepare(sql);
-    // Esegue la query e fa il cast del risultato a Patient[]
-    const patients = stmt.all(...params) as Patient[];
-    // Logga nella console la query, i parametri e il numero di risultati per debug
-    console.log('fetchUnassignedPatients - Query:', sql, 'Params:', params, 'Results count:', patients.length);
-    // Restituisce l'array dei pazienti non assegnati
-    return patients;
+    const patients = await Paziente.find(mongoQuery)
+      .select('cf nome cognome email numTelefono dataNascita -_id')
+      .sort({ cognome: 1, nome: 1 })
+      .lean<PatientMongo[]>();
+
+    return patients.map(mapPatient);
   } catch (error) {
     // Logga l'errore nella console in caso di problemi
     console.error('Error fetching unassigned patients:', error);

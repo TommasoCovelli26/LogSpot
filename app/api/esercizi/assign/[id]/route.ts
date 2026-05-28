@@ -1,7 +1,30 @@
-// Importa l'istanza del database SQLite dal modulo db locale
-import { db } from '@/lib/db';
-// Importa NextRequest e NextResponse da Next.js per gestire richieste e risposte HTTP
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
+import connectToDatabase from '@/lib/mongodb';
+import Attivita from '@/models/Attivita';
+import Esercizio from '@/models/Esercizio';
+import Logopedista from '@/models/Logopedista';
+
+function externalIdFromUnknown(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) return parsed;
+    if (mongoose.isValidObjectId(value)) return Number.parseInt(value.slice(-8), 16);
+  }
+  if (value instanceof mongoose.Types.ObjectId) {
+    return Number.parseInt(value.toString().slice(-8), 16);
+  }
+  return 0;
+}
+
+async function resolveActivityByExternalId(activityId: number) {
+  const byCod = await Attivita.findOne({ cod: activityId }).select('_id cod').lean();
+  if (byCod) return byCod;
+
+  const candidates = await Attivita.find({}).select('_id cod').lean<any[]>();
+  return candidates.find((item) => externalIdFromUnknown(item.cod ?? item._id) === activityId) || null;
+}
 
 /**
  * Handler GET per l'endpoint /api/esercizi/assign/[id]
@@ -14,51 +37,59 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }  // Parametri dinamici dell'URL (id dell'attività)
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Estrae l'id dell'attività dai parametri dinamici della route
     const { id } = await params;
-    // Converte l'id da stringa a numero intero
     const activityId = parseInt(id);
-    // Accede ai parametri della query string dalla richiesta
     const searchParams = request.nextUrl.searchParams;
-    // Legge la P.IVA del logopedista dalla query string
     const pIva = searchParams.get('pIva');
 
-    // Validazione: verifica che l'id sia un numero valido
     if (isNaN(activityId)) {
-      // Restituisce errore 400 se l'ID dell'attività non è un numero valido
       return NextResponse.json(
         { error: 'ID attività non valido' },
         { status: 400 }
       );
     }
 
-    // Validazione: verifica che la P.IVA sia presente nella query string
     if (!pIva) {
-      // Restituisce errore 400 se la P.IVA non è stata fornita
       return NextResponse.json(
         { error: 'pIva non fornita' },
         { status: 400 }
       );
     }
 
-    // Recupera i codici fiscali (DISTINCT) dei pazienti a cui l'attività è già assegnata
-    // dal logopedista corrente, dalla tabella Esercizio
-    const assignedPatients = db.prepare(`
-      SELECT DISTINCT E.id_paziente
-      FROM Esercizio E
-      WHERE E.id_attivita = ? AND E.id_logopedista = ?
-    `).all(activityId, pIva) as any[];
+    await connectToDatabase();
 
-    // Mappa i risultati in un array di stringhe contenente solo i codici fiscali
-    const assignedCFs = assignedPatients.map(p => p.id_paziente);
+    const [activity, logopedista] = await Promise.all([
+      resolveActivityByExternalId(activityId),
+      Logopedista.findOne({ pIva }).select('_id').lean(),
+    ]);
 
-    // Restituisce l'array dei CF dei pazienti già assegnati come risposta JSON
+    if (!activity?._id || !logopedista?._id) {
+      return NextResponse.json({ assignedCFs: [] });
+    }
+
+    const assignedPatients = await Esercizio.find({
+      $and: [
+        { $or: [{ attivita: activity._id }, { id_attivita: activityId }] },
+        { $or: [{ logopedista: logopedista._id }, { id_logopedista: pIva }] },
+      ],
+    })
+      .populate({ path: 'paziente', select: 'cf' })
+      .select('id_paziente paziente')
+      .lean<any[]>();
+
+    const assignedCFs = Array.from(
+      new Set(
+        assignedPatients
+          .map((item) => item.paziente?.cf || item.id_paziente)
+          .filter((cfValue): cfValue is string => Boolean(cfValue))
+      )
+    );
+
     return NextResponse.json({ assignedCFs });
   } catch (error) {
-    // Logga l'errore e restituisce errore 500
     console.error('Errore nel recupero delle assegnazioni:', error);
     return NextResponse.json(
       { error: 'Errore nel recupero delle assegnazioni' },

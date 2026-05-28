@@ -2,8 +2,10 @@
 import { notFound } from 'next/navigation';
 // Importa il componente Link per la navigazione client-side
 import Link from 'next/link';
-// Importa l'istanza del database SQLite per query dirette
-import { db } from '@/lib/db';
+import mongoose from 'mongoose';
+import connectToDatabase from '@/lib/mongodb';
+import Esercizio from '@/models/Esercizio';
+import Paziente from '@/models/Paziente';
 // Importa le icone utilizzate nella pagina da Heroicons
 import { 
   ArrowLeftIcon,      // Icona freccia indietro per la navigazione
@@ -31,48 +33,76 @@ export default async function AssignedExercisePage({
 }) {
   // Estrae il codice fiscale del paziente e l'ID dell'esercizio dai parametri
   const { cf, id } = await params;
-  // Converte l'ID dell'esercizio in numero intero
-  const exerciseId = parseInt(id);
+  const exerciseId = id;
 
-  // 1. Query SQL per recuperare i dettagli dell'esercizio uniti all'attività correlata
-  // JOIN tra la tabella Esercizio (E) e Attivita (A) tramite l'id_attivita
-  const data = db.prepare(`
-    SELECT 
-      E.id as exercise_id,
-      E.dataAssegnazione,
-      E.statoCompletamento,
-      A.titolo,
-      A.descrizione,
-      A.istruzioni,
-      A.immagine,
-      A.fasciaEta,
-      A.patologie
-    FROM Esercizio E
-    JOIN Attivita A ON E.id_attivita = A.cod
-    WHERE E.id = ? AND E.id_paziente = ?
-  `).get(exerciseId, cf) as any;
-
-  // Se l'esercizio non esiste o non appartiene al paziente, mostra la 404
-  if (!data) {
-    notFound();
+  // helper per compatibilità con gli id legacy
+  function externalIdFromUnknown(value: unknown): number {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string') {
+      const parsed = Number.parseInt(value, 10);
+      if (Number.isFinite(parsed)) return parsed;
+      if (mongoose.isValidObjectId(value)) return Number.parseInt(value.slice(-8), 16);
+    }
+    if (value instanceof mongoose.Types.ObjectId) {
+      return Number.parseInt(value.toString().slice(-8), 16);
+    }
+    return 0;
   }
 
-  // Splitta la stringa delle patologie in un array (separate da virgola)
-  const patologieList = data.patologie ? data.patologie.split(',') : [];
-  // Splitta la stringa delle immagini in un array (separate da pipe '|')
-  const allegatiList = data.immagine ? data.immagine.split('|') : [];
+  await connectToDatabase();
 
-  // 2. Query SQL per recuperare i feedback del paziente per questo esercizio
-  // Ordinati per data decrescente (i più recenti per primi)
-  const feedbacks = db.prepare(`
-    SELECT 
-      cod,
-      messaggio,
-      data
-    FROM Feedback
-    WHERE id_esercizio = ? AND id_paziente = ?
-    ORDER BY data DESC
-  `).all(exerciseId, cf) as any[];
+  // recupera paziente per poter filtrare anche sul riferimento ObjectId
+  const patient = await Paziente.findOne({ cf }).select('_id cf').lean();
+  const patientClauses: any[] = [{ id_paziente: cf }];
+  if (patient?._id) patientClauses.push({ paziente: patient._id });
+
+  // Costruisce clausole per cercare l'esercizio sia per legacy numeric id che per ObjectId
+  const numericId = Number.parseInt(id, 10);
+  const exerciseClauses: any[] = [];
+  if (Number.isFinite(numericId)) exerciseClauses.push({ id: numericId });
+  if (mongoose.isValidObjectId(id)) exerciseClauses.push({ _id: new mongoose.Types.ObjectId(id) });
+
+  let exercise = null as any;
+  if (exerciseClauses.length > 0) {
+    exercise = await Esercizio.findOne({ $and: [{ $or: exerciseClauses }, { $or: patientClauses }] })
+      .populate({ path: 'attivita', select: 'titolo descrizione istruzioni immagini immagine fasciaEta patologie' })
+      .populate({ path: 'paziente', select: 'cf' })
+      .lean();
+  }
+
+  // fallback: cerca tra tutti gli esercizi del paziente matching external numeric id
+  if (!exercise && Number.isFinite(numericId)) {
+    const candidates = await Esercizio.find({ $or: patientClauses })
+      .populate({ path: 'attivita', select: 'titolo descrizione istruzioni immagini immagine fasciaEta patologie' })
+      .populate({ path: 'paziente', select: 'cf' })
+      .lean<any[]>();
+
+    exercise = candidates.find((c) => externalIdFromUnknown(c.id ?? c._id) === numericId) || null;
+  }
+
+  if (!exercise) notFound();
+
+  const activity = exercise.attivita || {};
+  const patologieList = Array.isArray(activity.patologie)
+    ? activity.patologie
+    : (typeof activity.patologie === 'string' && activity.patologie.length > 0)
+    ? activity.patologie.split(',').map((s: string) => s.trim())
+    : [];
+
+  const allegatiList = Array.isArray(activity.immagini)
+    ? activity.immagini
+    : (activity.immagine ? String(activity.immagine).split('|') : []);
+
+  // Feedbacks: schema attuale memorizza un singolo feedback embedded per esercizio
+  const feedbacks = exercise.feedback && (exercise.feedback.messaggio || '').trim()
+    ? [
+        {
+          cod: externalIdFromUnknown(exercise.feedback._id),
+          messaggio: exercise.feedback.messaggio,
+          data: exercise.feedback.data ? new Date(exercise.feedback.data).toISOString() : new Date().toISOString(),
+        },
+      ]
+    : [];
 
   return (
     // Container principale: sfondo bianco, padding responsivo
@@ -93,7 +123,7 @@ export default async function AssignedExercisePage({
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-100 pb-6">
             {/* Titolo dell'esercizio con font Lusitana */}
             <h1 className={`${lusitana.className} text-4xl md:text-5xl font-bold text-yellow-400`}>
-              {data.titolo}
+              {activity.titolo}
             </h1>
             
             {/* Badge informativi: tipo e data di assegnazione */}
@@ -106,7 +136,7 @@ export default async function AssignedExercisePage({
                {/* Badge: mostra la data di assegnazione dell'esercizio */}
                <span className="px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest border bg-gray-50 text-gray-600 border-gray-200 flex items-center gap-2">
                   <CalendarIcon className="w-4 h-4" />
-                  {new Date(data.dataAssegnazione).toLocaleDateString()}
+                  {exercise.dataAssegnazione ? new Date(exercise.dataAssegnazione).toLocaleDateString() : ''}
                </span>
             </div>
         </div>
@@ -127,7 +157,7 @@ export default async function AssignedExercisePage({
                 </h3>
                 {/* Testo della descrizione dell'attività con supporto newline */}
                 <p className="text-gray-800 text-lg leading-relaxed whitespace-pre-wrap">
-                    {data.descrizione || "Nessuna descrizione."}
+                  {activity.descrizione || "Nessuna descrizione."}
                 </p>
                 {/* Viewer per le immagini allegate all'attività */}
                 <DetailImageViewer images={allegatiList} />
@@ -141,7 +171,7 @@ export default async function AssignedExercisePage({
                 </h3>
                 {/* Testo dell'obiettivo in stile corsivo e dimensione grande */}
                 <p className="text-yellow-900 font-medium text-xl italic leading-relaxed">
-                    "{data.istruzioni || 'Nessun obiettivo.'}"
+                  "{activity.istruzioni || 'Nessun obiettivo.'}"
                 </p>
             </div>
         </div>
@@ -153,9 +183,9 @@ export default async function AssignedExercisePage({
             <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Stato Attuale</h3>
                 {/* Colore dinamico: verde se completato, giallo altrimenti */}
-                <p className={`text-xl font-bold uppercase ${data.statoCompletamento === 'completato' ? 'text-green-600' : 'text-yellow-400'}`}>
-                   {data.statoCompletamento || 'Da Svolgere'}
-                </p>
+                 <p className={`text-xl font-bold uppercase ${exercise.statoCompletamento === 'completato' ? 'text-green-600' : 'text-yellow-400'}`}>
+                   {exercise.statoCompletamento || 'Da Svolgere'}
+                 </p>
             </div>
 
             {/* Card Patologie associate all'attività */}
@@ -173,7 +203,7 @@ export default async function AssignedExercisePage({
 
             {/* Pulsante per rimuovere l'assegnazione dell'esercizio al paziente */}
             <div className="pt-6 border-t border-gray-100">
-               <UnassignButton exerciseId={exerciseId} patientCf={cf} />
+               <UnassignButton exerciseId={externalIdFromUnknown(exercise.id ?? exercise._id)} patientCf={cf} />
             </div>
 
         </div>

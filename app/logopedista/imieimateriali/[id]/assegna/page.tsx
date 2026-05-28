@@ -1,7 +1,7 @@
 // Importa la funzione cookies per accedere ai cookie HTTP lato server
 import { cookies } from 'next/headers';
-// Importa l'istanza del database SQLite per query dirette
-import { db } from '@/lib/db';
+import { fetchActivityById } from '@/lib/activities';
+import { fetchPatients } from '@/lib/patients';
 // Importa la funzione notFound per mostrare la pagina 404
 import { notFound } from 'next/navigation';
 // Importa il componente Link per la navigazione client-side
@@ -26,8 +26,8 @@ export default async function AssignMyMaterialPage({
 }) {
   // Estrae l'id dell'attività dai parametri dinamici della route
   const { id } = await params;
-  // Converte l'id in numero intero
-  const activityId = parseInt(id);
+  // Manteniamo l'id come stringa per la risoluzione tramite MongoDB
+  const activityId = id;
 
   // 1. Recupera la P.IVA del logopedista dai cookie HTTP
   const cookieStore = await cookies();
@@ -46,16 +46,11 @@ export default async function AssignMyMaterialPage({
      }
   }
 
-  // 2. Query diretta al database: recupera i pazienti associati al logopedista
-  // Seleziona cf, nome e cognome dalla tabella Paziente filtrata per id_logopedista
-  const patients = db.prepare(`
-    SELECT cf, nome, cognome 
-    FROM Paziente 
-    WHERE id_logopedista = ?
-  `).all(logopedistaId) as any[];
+  // Recupera i pazienti tramite il layer MongoDB
+  const patients = await fetchPatients(logopedistaId);
 
-  // 3. Recupera i dettagli dell'attività dal database
-  const activity = db.prepare('SELECT * FROM Attivita WHERE cod = ?').get(activityId) as any;
+  // Recupera il dettaglio dell'attività tramite MongoDB
+  const activity = await fetchActivityById(id);
 
   // Se l'attività non esiste, mostra la pagina 404
   if (!activity) notFound();

@@ -2,8 +2,7 @@
 // app/api/pazienti/route.ts
 // Importa NextResponse da Next.js per costruire risposte HTTP nelle API route
 import { NextResponse } from "next/server";
-// Importa l'istanza del database SQLite dal modulo db locale
-import { db } from "@/lib/db";
+import { fetchPatients } from "@/lib/patients";
 
 /**
  * Handler GET per l'endpoint /api/lista-pazienti
@@ -27,21 +26,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Logopedista non autenticato" }, { status: 401 });
   }
 
-  // Prepara la query SQL: seleziona i dati dei pazienti associati al logopedista
-  // Filtra per id_logopedista e applica ricerca LIKE su nome e cognome
-  const stmt = db.prepare(`
-    SELECT cf, nome, cognome, email, numTelefono
-    FROM Paziente
-    WHERE id_logopedista = ?
-      AND (nome LIKE ? OR cognome LIKE ?)
-  `);
-
-  // Esegue la query con la P.IVA del logopedista e il termine di ricerca con wildcard
-  const pazienti = stmt.all(
-    pIva,
-    `%${query}%`,
-    `%${query}%`
-  );
+  const pazienti = await fetchPatients(pIva, query);
 
   // Restituisce l'array dei pazienti come risposta JSON
   return NextResponse.json(pazienti);

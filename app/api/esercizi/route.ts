@@ -1,7 +1,29 @@
-// Importa NextResponse da Next.js per costruire risposte HTTP nelle API route
 import { NextResponse } from 'next/server';
-// Importa l'istanza del database SQLite dal modulo db locale
-import { db } from '@/lib/db';
+import mongoose from 'mongoose';
+import connectToDatabase from '@/lib/mongodb';
+import Esercizio from '@/models/Esercizio';
+import Logopedista from '@/models/Logopedista';
+import Paziente from '@/models/Paziente';
+import { fetchAssignedExercises } from '@/lib/activities';
+
+function externalIdFromUnknown(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) return parsed;
+    if (mongoose.isValidObjectId(value)) return Number.parseInt(value.slice(-8), 16);
+  }
+  if (value instanceof mongoose.Types.ObjectId) {
+    return Number.parseInt(value.toString().slice(-8), 16);
+  }
+  return 0;
+}
+
+function toIsoString(value: Date | string | null | undefined): string {
+  if (!value) return new Date().toISOString();
+  if (typeof value === 'string') return value;
+  return value.toISOString();
+}
 
 /**
  * Handler GET per l'endpoint /api/esercizi
@@ -12,46 +34,44 @@ import { db } from '@/lib/db';
  * Parametri query string: cf, pIva, query (ricerca), filter (tutti/completati/in-corso)
  */
 export async function GET(req: Request) {
-  // Estrae i parametri dalla query string dell'URL
   const { searchParams } = new URL(req.url);
-  // Legge il codice fiscale del paziente dalla query string
   const cf = searchParams.get('cf');
-  // Legge la P.IVA del logopedista dalla query string (opzionale)
   const pIva = searchParams.get('pIva');
-  // Legge il termine di ricerca dalla query string (default: stringa vuota)
   const query = searchParams.get('query') || '';
-  // Legge il filtro di stato dalla query string (default: 'tutti')
   const filter = searchParams.get('filter') || 'tutti';
 
-  /* =====================================================
-     CASO LOGOPEDISTA (cf + pIva)
-     Quando sia il CF del paziente che la P.IVA del logopedista sono forniti,
-     restituisce gli esercizi assegnati da quel logopedista a quel paziente.
-     ===================================================== */
   if (cf && pIva) {
     try {
-      // Prepara la query SQL: seleziona gli esercizi con JOIN su Attivita per il titolo
-      // Filtra per paziente (cf) e logopedista (pIva), ordina per data decrescente
-      const stmt = db.prepare(`
-        SELECT 
-          E.id,
-          A.titolo,
-          E.dataAssegnazione,
-          E.statoCompletamento,
-          E.esito
-        FROM Esercizio E
-        JOIN Attivita A ON E.id_attivita = A.cod
-        WHERE E.id_paziente = ?
-          AND E.id_logopedista = ?
-        ORDER BY E.dataAssegnazione DESC
-      `);
+      await connectToDatabase();
 
-      // Esegue la query con i parametri cf e pIva
-      const rows = stmt.all(cf, pIva);
-      // Restituisce l'array di esercizi come risposta JSON
-      return NextResponse.json(rows);
+      const [logopedista, patient] = await Promise.all([
+        Logopedista.findOne({ pIva }).select('_id').lean(),
+        Paziente.findOne({ cf }).select('_id').lean(),
+      ]);
+
+      const patientConditions: any[] = [{ id_paziente: cf }];
+      if (patient?._id) patientConditions.push({ paziente: patient._id });
+
+      const logopedistaConditions: any[] = [{ id_logopedista: pIva }];
+      if (logopedista?._id) logopedistaConditions.push({ logopedista: logopedista._id });
+
+      const rows = await Esercizio.find({
+        $and: [{ $or: patientConditions }, { $or: logopedistaConditions }],
+      })
+        .populate({ path: 'attivita', select: 'titolo _id cod' })
+        .sort({ dataAssegnazione: -1 })
+        .lean<any[]>();
+
+      const mapped = rows.map((exercise) => ({
+        id: externalIdFromUnknown(exercise.id ?? exercise._id),
+        titolo: exercise.attivita?.titolo || '',
+        dataAssegnazione: toIsoString(exercise.dataAssegnazione),
+        statoCompletamento: exercise.statoCompletamento ?? null,
+        esito: exercise.esito ?? null,
+      }));
+
+      return NextResponse.json(mapped);
     } catch (error) {
-      // Logga l'errore e restituisce errore 500
       console.error('Database Error:', error);
       return NextResponse.json(
         { error: 'Errore nel recupero degli esercizi del logopedista' },
@@ -60,57 +80,11 @@ export async function GET(req: Request) {
     }
   }
 
-  /* =====================================================
-     CASO PAZIENTE (solo cf)
-     Quando solo il CF del paziente è fornito,
-     restituisce tutti gli esercizi del paziente con supporto per ricerca e filtri.
-     ===================================================== */
   if (cf) {
     try {
-      // Query SQL base: seleziona gli esercizi con INNER JOIN su Attivita per titolo e id_attivita
-      // Filtra per il paziente specificato
-      let sql = `
-        SELECT 
-          E.id,
-          A.titolo,
-          E.dataAssegnazione,
-          E.statoCompletamento,
-          E.esito,
-          E.id_attivita
-        FROM Esercizio E
-        INNER JOIN Attivita A ON E.id_attivita = A.cod
-        WHERE E.id_paziente = ?
-      `;
-
-      // Array dei parametri per la query preparata; inizia con il codice fiscale del paziente
-      const params: any[] = [cf];
-
-      // Filtro ricerca: se è presente un termine di ricerca, aggiunge un filtro LIKE sul titolo
-      if (query) {
-        sql += ` AND A.titolo LIKE ?`;
-        // Aggiunge il termine con wildcard per ricerca parziale
-        params.push(`%${query}%`);
-      }
-
-      // Filtro stato: applica condizioni sullo stato di completamento
-      if (filter === 'completati') {
-        // Mostra solo gli esercizi con stato 'completato'
-        sql += ` AND E.statoCompletamento = 'completato'`;
-      } else if (filter === 'in-corso') {
-        // Mostra gli esercizi con stato null (non iniziati) o 'in-corso'
-        sql += ` AND (E.statoCompletamento IS NULL OR E.statoCompletamento = 'in-corso')`;
-      }
-
-      // Ordina i risultati per data di assegnazione dalla più recente
-      sql += ` ORDER BY E.dataAssegnazione DESC`;
-
-      // Prepara ed esegue la query SQL con i parametri raccolti
-      const stmt = db.prepare(sql);
-      const rows = stmt.all(...params);
-      // Restituisce l'array di esercizi come risposta JSON
+      const rows = await fetchAssignedExercises(cf, query, filter);
       return NextResponse.json(rows);
     } catch (error) {
-      // Logga l'errore e restituisce errore 500
       console.error('Database Error:', error);
       return NextResponse.json(
         { error: 'Errore nel recupero degli esercizi del paziente' },
@@ -119,10 +93,6 @@ export async function GET(req: Request) {
     }
   }
 
-  /* =====================================================
-     PARAMETRI MANCANTI
-     Se né cf né pIva sono stati forniti, restituisce errore 400
-     ===================================================== */
   return NextResponse.json(
     { error: 'Parametri mancanti' },
     { status: 400 }

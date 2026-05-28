@@ -1,7 +1,31 @@
-// Importa NextResponse da Next.js per costruire risposte HTTP nelle API route
 import { NextResponse } from 'next/server';
-// Importa l'istanza del database SQLite dal modulo db locale
-import { db } from '@/lib/db';
+import mongoose from 'mongoose';
+import connectToDatabase from '@/lib/mongodb';
+import Attivita from '@/models/Attivita';
+import Esercizio from '@/models/Esercizio';
+import Logopedista from '@/models/Logopedista';
+import Paziente from '@/models/Paziente';
+
+function externalIdFromUnknown(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) return parsed;
+    if (mongoose.isValidObjectId(value)) return Number.parseInt(value.slice(-8), 16);
+  }
+  if (value instanceof mongoose.Types.ObjectId) {
+    return Number.parseInt(value.toString().slice(-8), 16);
+  }
+  return 0;
+}
+
+async function resolveActivityByExternalId(activityId: number) {
+  const byCod = await Attivita.findOne({ cod: activityId }).select('_id cod').lean();
+  if (byCod) return byCod;
+
+  const candidates = await Attivita.find({}).select('_id cod').lean<any[]>();
+  return candidates.find((item) => externalIdFromUnknown(item.cod ?? item._id) === activityId) || null;
+}
 
 /**
  * Handler POST per l'endpoint /api/esercizi/assign
@@ -11,43 +35,47 @@ import { db } from '@/lib/db';
  */
 export async function POST(req: Request) {
   try {
-    // Legge il corpo della richiesta JSON
+    await connectToDatabase();
+
     const body = await req.json();
-    // Estrae il codice fiscale del paziente dal body
     const cf = body.cf;
-    // Estrae e converte l'ID dell'attività in numero
     const id_attivita = Number(body.id_attivita);
-    // Estrae la P.IVA del logopedista dal body (default: null se non fornita)
     const pIva = body.pIva || null;
 
-    // Validazione: verifica che tutti i parametri obbligatori siano presenti
     if (!cf || !id_attivita || !pIva) {
-      // Restituisce errore 400 se manca almeno un parametro
       return NextResponse.json({ error: 'Parametri mancanti' }, { status: 400 });
     }
 
-    // Prepara la query SQL per inserire un nuovo esercizio nel database
-    // Imposta: data di assegnazione a oggi, stato 'non iniziato', durata 0, esito 'nullo'
-    const stmt = db.prepare(`
-      INSERT INTO Esercizio (dataAssegnazione, statoCompletamento, durata, esito, id_attivita, id_logopedista, id_paziente)
-      VALUES (DATE('now'), 'non iniziato', 0, 'nullo', ?, ?, ?)
-    `);
+    const [patient, logopedista] = await Promise.all([
+      Paziente.findOne({ cf }).select('_id').lean(),
+      Logopedista.findOne({ pIva }).select('_id').lean(),
+    ]);
 
-    try {
-      // Esegue l'inserimento con i parametri: id_attivita, pIva del logopedista, cf del paziente
-      const info = stmt.run(id_attivita, pIva, cf);
-      // Restituisce successo con l'ID del nuovo esercizio creato
-      return NextResponse.json({ success: true, id: info.lastInsertRowid });
-    } catch (err: any) {
-      // Logga l'errore di inserimento nel database
-      console.error('DB insert error', err);
-      // Restituisce errore 500 con il messaggio di errore del database
-      return NextResponse.json({ error: err.message || 'Errore DB' }, { status: 500 });
+    if (!patient || !logopedista) {
+      return NextResponse.json({ error: 'Paziente o logopedista non trovato' }, { status: 404 });
     }
+
+    const activity = await resolveActivityByExternalId(id_attivita);
+    if (!activity?._id) {
+      return NextResponse.json({ error: 'Attività non trovata' }, { status: 404 });
+    }
+
+    const created = await Esercizio.create({
+      dataAssegnazione: new Date(),
+      statoCompletamento: 'non iniziato',
+      durata: 0,
+      esito: 'nullo',
+      attivita: activity._id,
+      logopedista: logopedista._id,
+      paziente: patient._id,
+      id_attivita,
+      id_logopedista: pIva,
+      id_paziente: cf,
+    });
+
+    return NextResponse.json({ success: true, id: externalIdFromUnknown(created.id ?? created._id) });
   } catch (error) {
-    // Logga l'errore di parsing del body della richiesta
-    console.error('Errore parsing body', error);
-    // Restituisce errore 400 se il corpo della richiesta non è JSON valido
-    return NextResponse.json({ error: 'Corpo richiesta non valido' }, { status: 400 });
+    console.error('Errore assegnazione esercizio', error);
+    return NextResponse.json({ error: 'Errore DB' }, { status: 500 });
   }
 }

@@ -1,12 +1,8 @@
 // Importa NextResponse da Next.js per costruire risposte HTTP nelle API route
 import { NextResponse } from "next/server";
-// Importa la libreria better-sqlite3 per interagire con il database SQLite
-import Database from "better-sqlite3";
-// Importa il modulo 'path' di Node.js per costruire percorsi di file cross-platform
-import path from "path";
-
-// Costruisce il percorso assoluto al file del database SQLite
-const dbPath = path.join(process.cwd(), "app/data/database.db");
+import connectToDatabase from "@/lib/mongodb";
+import Logopedista from "@/models/Logopedista";
+import Paziente from "@/models/Paziente";
 
 // Tipo TypeScript che rappresenta la struttura di un record Logopedista nel database
 type LogopedistaDB = {
@@ -46,14 +42,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Apre una connessione al database SQLite
-    const db = new Database(dbPath);
+    await connectToDatabase();
 
     // --- Controllo LOGOPEDISTA ---
-    // Cerca un logopedista nel database con email e password corrispondenti
-    const logopedista = db
-      .prepare("SELECT * FROM Logopedista WHERE email = ? AND password = ?")
-      .get(email, password) as LogopedistaDB | undefined;
+    const logopedista = (await Logopedista.findOne({ email, password })
+      .select("pIva nome cognome email password")
+      .lean()) as LogopedistaDB | null;
 
     // Se un logopedista è stato trovato con le credenziali fornite
     if (logopedista) {
@@ -84,9 +78,9 @@ export async function POST(request: Request) {
 
     // --- Controllo PAZIENTE ---
     // Se non è stato trovato un logopedista, cerca un paziente con le stesse credenziali
-    const paziente = db
-      .prepare("SELECT * FROM Paziente WHERE email = ? AND password = ?")
-      .get(email, password) as PazienteDB | undefined;
+    const paziente = (await Paziente.findOne({ email, password })
+      .select("cf nome cognome email password")
+      .lean()) as PazienteDB | null;
 
     // Se un paziente è stato trovato con le credenziali fornite
     if (paziente) {

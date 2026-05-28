@@ -1,5 +1,9 @@
-// Importa l'istanza del database SQLite dal modulo db locale
-import { db } from '@/lib/db';
+import mongoose from 'mongoose';
+import connectToDatabase from '@/lib/mongodb';
+import Attivita from '@/models/Attivita';
+import Esercizio from '@/models/Esercizio';
+import Logopedista from '@/models/Logopedista';
+import Paziente from '@/models/Paziente';
 
 // Interfaccia TypeScript che rappresenta un'attività con il suo stato di preferito
 export interface ActivityWithFavorite {
@@ -45,6 +49,109 @@ export interface ActivityDetail {
   cognome_logopedista?: string;        // Cognome del logopedista creatore (opzionale)
 }
 
+type ActivityMongo = {
+  _id: unknown;
+  cod?: number;
+  titolo?: string;
+  dataCreazione?: Date | string | null;
+  descrizione?: string;
+  istruzioni?: string;
+  immagini?: string[];
+  immagine?: string;
+  accessibilita?: boolean | number;
+  fasciaEta?: number;
+  patologie?: string[] | string;
+  creatore?: {
+    pIva?: string;
+    nome?: string;
+    cognome?: string;
+  } | null;
+  id_logopedista?: string;
+  commenti?: CommentMongo[];
+};
+
+type ExerciseMongo = {
+  _id: unknown;
+  id?: number;
+  dataAssegnazione?: Date | string | null;
+  statoCompletamento?: string | null;
+  esito?: string | null;
+  id_attivita?: number;
+  attivita?: {
+    _id?: unknown;
+    cod?: number;
+    titolo?: string;
+  } | null;
+};
+
+type CommentMongo = {
+  _id?: unknown;
+  cod?: number;
+  messaggio?: string;
+  data?: Date | string | null;
+  logopedista?: {
+    pIva?: string;
+    nome?: string;
+    cognome?: string;
+  } | null;
+};
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function toDateString(value: Date | string | null | undefined): string {
+  if (!value) return new Date().toISOString();
+  if (typeof value === 'string') return value;
+  return value.toISOString();
+}
+
+function toNumericId(value: unknown, fallback: number = 0): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) return parsed;
+    if (mongoose.isValidObjectId(value)) {
+      return Number.parseInt(value.slice(-8), 16);
+    }
+  }
+  if (value instanceof mongoose.Types.ObjectId) {
+    return Number.parseInt(value.toString().slice(-8), 16);
+  }
+  return fallback;
+}
+
+function normalizePatologie(value: string[] | string | undefined): string {
+  if (!value) return '';
+  return Array.isArray(value) ? value.join(',') : value;
+}
+
+function normalizeImmagine(value: string[] | string | undefined): string {
+  if (!value) return '';
+  return Array.isArray(value) ? value.join('|') : value;
+}
+
+function getFavoriteSet(logopedista: any): Set<string> {
+  const ids = (logopedista?.preferiti || [])
+    .map((p: any) => p?.attivita)
+    .filter(Boolean)
+    .map((id: any) => id.toString());
+  return new Set(ids);
+}
+
+function buildIdQuery(id: string): any[] {
+  const clauses: any[] = [];
+  if (mongoose.isValidObjectId(id)) {
+    clauses.push({ _id: new mongoose.Types.ObjectId(id) });
+  }
+
+  const numericId = Number.parseInt(id, 10);
+  if (Number.isFinite(numericId)) {
+    clauses.push({ cod: numericId });
+  }
+  return clauses;
+}
+
 /**
  * Recupera le attività create da un logopedista specifico, con supporto per ricerca e filtri.
  * @param userId - La P.IVA del logopedista di cui recuperare le attività
@@ -58,46 +165,42 @@ export async function fetchActivities(
   filter: string = 'recenti'
 ): Promise<ActivityWithFavorite[]> {
   try {
-    // Query SQL di base: seleziona le attività del logopedista con LEFT JOIN sulla tabella Preferiti
-    // La CASE verifica se esiste un record nei Preferiti per determinare se l'attività è tra i preferiti
-    let sql = `
-      SELECT 
-        A.cod, 
-        A.titolo, 
-        A.dataCreazione,
-        (CASE WHEN P.id_attivita IS NOT NULL THEN 1 ELSE 0 END) as isFavorite
-      FROM Attivita A
-      LEFT JOIN Preferiti P ON A.cod = P.id_attivita AND P.id_logopedista = ?
-      WHERE A.id_logopedista = ?
-    `;
+    await connectToDatabase();
 
-    // Array dei parametri: userId viene usato sia per il JOIN Preferiti che per il filtro WHERE
-    const params: any[] = [userId, userId];
+    const logopedista = await Logopedista.findOne({ pIva: userId })
+      .select('_id preferiti')
+      .lean();
 
-    // Se è presente un termine di ricerca, aggiunge un filtro LIKE sul titolo
-    if (query) {
-      sql += ` AND A.titolo LIKE ?`;
-      // Aggiunge il termine con wildcard per la ricerca parziale
-      params.push(`%${query}%`);
+    if (!logopedista) return [];
+
+    const conditions: any[] = [{
+      $or: [{ creatore: logopedista._id }, { id_logopedista: userId }],
+    }];
+
+    const trimmedQuery = query.trim();
+    if (trimmedQuery) {
+      conditions.push({ titolo: { $regex: escapeRegex(trimmedQuery), $options: 'i' } });
     }
 
-    // Se il filtro è 'preferiti', mostra solo le attività che hanno un record nella tabella Preferiti
-    if (filter === 'preferiti') {
-      sql += ` AND P.id_attivita IS NOT NULL`;
-    }
+    const mongoQuery = conditions.length === 1 ? conditions[0] : { $and: conditions };
+    const favoriteSet = getFavoriteSet(logopedista);
 
-    // Ordina i risultati per data di creazione dalla più recente alla più vecchia
-    sql += ` ORDER BY A.dataCreazione DESC`;
+    const activities = await Attivita.find(mongoQuery)
+      .select('cod titolo dataCreazione')
+      .sort({ dataCreazione: -1 })
+      .lean<ActivityMongo[]>();
 
-    // Prepara ed esegue la query SQL con i parametri
-    const stmt = db.prepare(sql);
-    const rows = stmt.all(...params) as any[];
+    const mapped = activities.map((activity) => {
+      const activityId = activity._id?.toString?.() || '';
+      return {
+        cod: toNumericId(activity.cod ?? activity._id),
+        titolo: activity.titolo || '',
+        dataCreazione: toDateString(activity.dataCreazione),
+        isFavorite: favoriteSet.has(activityId),
+      };
+    });
 
-    // Mappa i risultati convertendo il campo isFavorite da numero (0/1) a booleano (false/true)
-    return rows.map(row => ({
-      ...row,                              // Copia tutti i campi della riga
-      isFavorite: Boolean(row.isFavorite)  // Converte 0/1 in false/true
-    }));
+    return filter === 'preferiti' ? mapped.filter((a) => a.isFavorite) : mapped;
   } catch (error) {
     // Logga l'errore e lancia un'eccezione con un messaggio leggibile
     console.error('Database Error:', error);
@@ -122,60 +225,60 @@ export async function fetchPublicActivities(
   pathologies?: string[]
 ): Promise<ActivityWithFavorite[]> {
   try {
-    // Query SQL base: seleziona le attività pubbliche (accessibilita = 1) con LEFT JOIN sui Preferiti
-    let sql = `
-      SELECT 
-        A.cod, 
-        A.titolo, 
-        A.dataCreazione,
-        (CASE WHEN P.id_attivita IS NOT NULL THEN 1 ELSE 0 END) as isFavorite
-      FROM Attivita A
-      LEFT JOIN Preferiti P ON A.cod = P.id_attivita AND P.id_logopedista = ?
-      WHERE A.accessibilita = 1
-    `;
+    await connectToDatabase();
 
-    // Array dei parametri: inizia con l'userId per il JOIN sui Preferiti
-    const params: any[] = [userId];
+    const logopedista = await Logopedista.findOne({ pIva: userId })
+      .select('_id preferiti')
+      .lean();
 
-    // Se è presente un termine di ricerca, aggiunge un filtro LIKE sul titolo
-    if (query) {
-      sql += ` AND A.titolo LIKE ?`;
-      params.push(`%${query}%`);
+    const favoriteSet = getFavoriteSet(logopedista);
+    const conditions: any[] = [{
+      $or: [{ accessibilita: true }, { accessibilita: 1 }],
+    }];
+
+    const trimmedQuery = query.trim();
+    if (trimmedQuery) {
+      conditions.push({ titolo: { $regex: escapeRegex(trimmedQuery), $options: 'i' } });
     }
 
-    // Se è specificata un'età valida (maggiore di 0), filtra le attività con fasciaEta adatta
     if (age && age > 0) {
-      sql += ` AND A.fasciaEta <= ?`;
-      params.push(age);
+      conditions.push({ fasciaEta: { $lte: age } });
     }
 
-    // Se sono specificate delle patologie, aggiunge condizioni OR per ciascuna patologia
     if (pathologies && pathologies.length > 0) {
-      // Crea una condizione LIKE per ogni patologia nell'array
-      const pathologyConditions = pathologies.map(() => `A.patologie LIKE ?`).join(' OR ');
-      // Racchiude le condizioni in parentesi e le aggiunge con AND
-      sql += ` AND (${pathologyConditions})`;
-      // Aggiunge ogni patologia come parametro con wildcard per la ricerca parziale
-      pathologies.forEach(pat => params.push(`%${pat}%`));
+      const pathologyClauses = pathologies
+        .map((p) => p.trim())
+        .filter(Boolean)
+        .map((p) => ({
+          $or: [
+            { patologie: { $regex: escapeRegex(p), $options: 'i' } },
+            { patologie: { $elemMatch: { $regex: escapeRegex(p), $options: 'i' } } },
+          ],
+        }));
+
+      if (pathologyClauses.length > 0) {
+        conditions.push({ $or: pathologyClauses });
+      }
     }
 
-    // Se il filtro è 'preferiti', mostra solo le attività segnate come preferite
-    if (filter === 'preferiti') {
-      sql += ` AND P.id_attivita IS NOT NULL`;
-    }
+    const mongoQuery = conditions.length === 1 ? conditions[0] : { $and: conditions };
 
-    // Ordina i risultati dalla data di creazione più recente
-    sql += ` ORDER BY A.dataCreazione DESC`;
+    const activities = await Attivita.find(mongoQuery)
+      .select('cod titolo dataCreazione')
+      .sort({ dataCreazione: -1 })
+      .lean<ActivityMongo[]>();
 
-    // Prepara ed esegue la query SQL con tutti i parametri raccolti
-    const stmt = db.prepare(sql);
-    const rows = stmt.all(...params) as any[];
+    const mapped = activities.map((activity) => {
+      const activityId = activity._id?.toString?.() || '';
+      return {
+        cod: toNumericId(activity.cod ?? activity._id),
+        titolo: activity.titolo || '',
+        dataCreazione: toDateString(activity.dataCreazione),
+        isFavorite: favoriteSet.has(activityId),
+      };
+    });
 
-    // Mappa i risultati convertendo isFavorite da intero a booleano
-    return rows.map(row => ({
-      ...row,                              // Copia tutti i campi della riga
-      isFavorite: Boolean(row.isFavorite)  // Converte 0/1 in false/true
-    }));
+    return filter === 'preferiti' ? mapped.filter((a) => a.isFavorite) : mapped;
   } catch (error) {
     // Logga l'errore e lancia un'eccezione con messaggio leggibile
     console.error('Database Error:', error);
@@ -191,27 +294,49 @@ export async function fetchPublicActivities(
  */
 export async function fetchActivityById(id: string): Promise<ActivityDetail | null> {
   try {
-    // Prepara la query SQL con LEFT JOIN sulla tabella Logopedista per ottenere nome e cognome del creatore
-    const stmt = db.prepare(`
-      SELECT 
-        Attivita.*,
-        Logopedista.nome AS nome_logopedista, 
-        Logopedista.cognome AS cognome_logopedista
-      FROM Attivita
-      LEFT JOIN Logopedista ON Attivita.id_logopedista = Logopedista.pIva
-      WHERE Attivita.cod = ?
-    `);
-    
-    // Esegue la query e recupera il singolo risultato (get restituisce una sola riga o undefined)
-    const activity = stmt.get(id) as ActivityDetail | undefined;
-    
-    // Se non è stata trovata nessuna attività con quell'ID, restituisce null
+    await connectToDatabase();
+
+    const idClauses = buildIdQuery(id);
+
+    let activity = null as ActivityMongo | null;
+
+    if (idClauses.length > 0) {
+      activity = await Attivita.findOne({ $or: idClauses })
+        .populate({ path: 'creatore', select: 'pIva nome cognome' })
+        .lean<ActivityMongo | null>();
+    }
+
+    // Fallback: se la query diretta non ha prodotto clausole utili (ad es. id non numerico
+    // e non ObjectId) oppure non ha trovato nulla, proviamo a cercare per external numeric id
+    // scansionando i candidati e confrontando con toNumericId
+    if (!activity) {
+      const candidates = await Attivita.find({})
+        .select('_id cod creatore id_logopedista immagini immagine fasciaEta patologie titolo descrizione istruzioni accessibilita dataCreazione')
+        .populate({ path: 'creatore', select: 'pIva nome cognome' })
+        .lean<ActivityMongo[]>();
+
+      const numericId = Number.parseInt(id, 10);
+      if (Number.isFinite(numericId)) {
+        activity = candidates.find((candidate) => toNumericId(candidate.cod ?? candidate._id) === numericId) || null;
+      }
+    }
+
     if (!activity) return null;
 
-    // Restituisce l'attività convertendo il campo accessibilita da intero (0/1) a booleano
+    const creator = activity.creatore || null;
+
     return {
-      ...activity,                                 // Copia tutti i campi dell'attività
-      accessibilita: Boolean(activity.accessibilita) // Converte 0/1 in false/true
+      cod: toNumericId(activity.cod ?? activity._id),
+      titolo: activity.titolo || '',
+      descrizione: activity.descrizione || '',
+      istruzioni: activity.istruzioni || '',
+      immagine: normalizeImmagine(activity.immagini ?? activity.immagine),
+      accessibilita: Boolean(activity.accessibilita),
+      fasciaEta: Number(activity.fasciaEta || 0),
+      patologie: normalizePatologie(activity.patologie),
+      id_logopedista: creator?.pIva || activity.id_logopedista || '',
+      nome_logopedista: creator?.nome,
+      cognome_logopedista: creator?.cognome,
     };
   } catch (error) {
     // Logga l'errore e restituisce null in caso di problemi
@@ -233,47 +358,50 @@ export async function fetchAssignedExercises(
   filter: string = 'tutti'
 ): Promise<AssignedExercise[]> {
   try {
-    // Query SQL base: seleziona gli esercizi con INNER JOIN su Attivita per ottenere il titolo
-    let sql = `
-      SELECT 
-        E.id,
-        A.titolo,
-        E.dataAssegnazione,
-        E.statoCompletamento,
-        E.esito,
-        E.id_attivita
-      FROM Esercizio E
-      INNER JOIN Attivita A ON E.id_attivita = A.cod
-      WHERE E.id_paziente = ?
-    `;
+    await connectToDatabase();
 
-    // Array dei parametri: inizia con il codice fiscale del paziente
-    const params: any[] = [patientCf];
+    const patient = await Paziente.findOne({ cf: patientCf }).select('_id').lean();
+    const patientConditions: any[] = [{ id_paziente: patientCf }];
 
-    // Se è presente un termine di ricerca, filtra per titolo dell'attività
-    if (query) {
-      sql += ` AND A.titolo LIKE ?`;
-      params.push(`%${query}%`);
+    if (patient?._id) {
+      patientConditions.push({ paziente: patient._id });
     }
 
-    // Applica il filtro sullo stato di completamento
+    const conditions: any[] = [{ $or: patientConditions }];
+
     if (filter === 'completati') {
-      // Mostra solo gli esercizi con stato 'completato'
-      sql += ` AND E.statoCompletamento = 'completato'`;
+      conditions.push({ statoCompletamento: 'completato' });
     } else if (filter === 'in-corso') {
-      // Mostra gli esercizi con stato null (non iniziati) o 'in-corso'
-      sql += ` AND (E.statoCompletamento IS NULL OR E.statoCompletamento = 'in-corso')`;
+      conditions.push({
+        $or: [{ statoCompletamento: null }, { statoCompletamento: 'in-corso' }],
+      });
     }
 
-    // Ordina i risultati per data di assegnazione dalla più recente
-    sql += ` ORDER BY E.dataAssegnazione DESC`;
+    const mongoQuery = conditions.length === 1 ? conditions[0] : { $and: conditions };
 
-    // Prepara ed esegue la query SQL con i parametri
-    const stmt = db.prepare(sql);
-    const rows = stmt.all(...params) as AssignedExercise[];
+    const exercises = await Esercizio.find(mongoQuery)
+      .populate({ path: 'attivita', select: 'titolo cod _id' })
+      .sort({ dataAssegnazione: -1 })
+      .lean<ExerciseMongo[]>();
 
-    // Restituisce direttamente l'array di esercizi assegnati
-    return rows;
+    let mapped = exercises.map((exercise) => {
+      const activity = exercise.attivita || null;
+      return {
+        id: toNumericId(exercise.id ?? exercise._id),
+        titolo: activity?.titolo || '',
+        dataAssegnazione: toDateString(exercise.dataAssegnazione),
+        statoCompletamento: exercise.statoCompletamento ?? null,
+        esito: exercise.esito ?? null,
+        id_attivita: toNumericId(exercise.id_attivita ?? activity?.cod ?? activity?._id),
+      };
+    });
+
+    const trimmedQuery = query.trim().toLowerCase();
+    if (trimmedQuery) {
+      mapped = mapped.filter((exercise) => exercise.titolo.toLowerCase().includes(trimmedQuery));
+    }
+
+    return mapped;
   } catch (error) {
     // Logga l'errore e lancia un'eccezione con messaggio leggibile
     console.error('Database Error:', error);
@@ -289,24 +417,37 @@ export async function fetchAssignedExercises(
  */
 export async function fetchCommentsByActivityId(activityId: number): Promise<Comment[]> {
   try {
-    // Prepara la query SQL con JOIN sulla tabella Logopedista per ottenere i dati dell'autore
-    // I commenti sono ordinati dal più recente al più vecchio
-    const comments = db.prepare(`
-      SELECT 
-        C.cod,
-        C.messaggio,
-        C.data,
-        C.id_logopedista,
-        L.nome AS nome_logopedista,
-        L.cognome AS cognome_logopedista
-      FROM Commento C
-      JOIN Logopedista L ON C.id_logopedista = L.pIva
-      WHERE C.id_attivita = ?
-      ORDER BY C.data DESC
-    `).all(activityId) as any[];
+    await connectToDatabase();
 
-    // Restituisce l'array dei commenti
-    return comments;
+    let activity = await Attivita.findOne({ cod: activityId })
+      .select('_id cod commenti')
+      .populate({ path: 'commenti.logopedista', select: 'pIva nome cognome' })
+      .lean<ActivityMongo | null>();
+
+    if (!activity) {
+      const candidates = await Attivita.find({})
+        .select('_id cod commenti')
+        .populate({ path: 'commenti.logopedista', select: 'pIva nome cognome' })
+        .lean<ActivityMongo[]>();
+
+      activity =
+        candidates.find((candidate) => toNumericId(candidate.cod ?? candidate._id) === activityId) || null;
+    }
+
+    if (!activity?.commenti || activity.commenti.length === 0) {
+      return [];
+    }
+
+    return [...activity.commenti]
+      .sort((a, b) => new Date(toDateString(b.data)).getTime() - new Date(toDateString(a.data)).getTime())
+      .map((comment) => ({
+        cod: toNumericId(comment.cod ?? comment._id),
+        messaggio: comment.messaggio || '',
+        data: toDateString(comment.data),
+        id_logopedista: comment.logopedista?.pIva || '',
+        nome_logopedista: comment.logopedista?.nome || 'Utente',
+        cognome_logopedista: comment.logopedista?.cognome || '',
+      }));
   } catch (error) {
     // Logga l'errore e restituisce un array vuoto come fallback sicuro
     console.error('Errore fetch commenti:', error);

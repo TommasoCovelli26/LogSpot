@@ -1,9 +1,36 @@
-// Importa l'istanza del database SQLite dal modulo db locale
-import { db } from '@/lib/db';
-// Importa NextRequest e NextResponse da Next.js per gestire richieste e risposte HTTP
 import { NextRequest, NextResponse } from 'next/server';
-// Importa la funzione cookies per accedere ai cookie HTTP (non utilizzata direttamente in questo file)
-import { cookies } from 'next/headers';
+import mongoose from 'mongoose';
+import connectToDatabase from '@/lib/mongodb';
+import Esercizio from '@/models/Esercizio';
+
+function externalIdFromUnknown(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) return parsed;
+    if (mongoose.isValidObjectId(value)) return Number.parseInt(value.slice(-8), 16);
+  }
+  if (value instanceof mongoose.Types.ObjectId) {
+    return Number.parseInt(value.toString().slice(-8), 16);
+  }
+  return 0;
+}
+
+async function resolveExerciseByExternalId(exerciseId: number) {
+  const byLegacyId = await Esercizio.findOne({ id: exerciseId })
+    .select('_id id paziente id_paziente feedback')
+    .populate({ path: 'paziente', select: 'cf' })
+    .lean<any>();
+
+  if (byLegacyId) return byLegacyId;
+
+  const candidates = await Esercizio.find({})
+    .select('_id id paziente id_paziente feedback')
+    .populate({ path: 'paziente', select: 'cf' })
+    .lean<any[]>();
+
+  return candidates.find((item) => externalIdFromUnknown(item.id ?? item._id) === exerciseId) || null;
+}
 
 /**
  * Handler GET per l'endpoint /api/esercizi/[id]/feedback
@@ -12,39 +39,47 @@ import { cookies } from 'next/headers';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }  // Parametri dinamici dell'URL (id dell'esercizio)
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Estrae l'id dell'esercizio dai parametri dinamici della route
     const { id } = await params;
-    // Converte l'id da stringa a numero intero
     const exerciseId = parseInt(id);
 
-    // Validazione: verifica che l'id sia un numero valido
     if (isNaN(exerciseId)) {
-      // Restituisce errore 400 se l'ID non è un numero valido
       return NextResponse.json(
         { error: 'ID esercizio non valido' },
         { status: 400 }
       );
     }
 
-    // Recupera tutti i feedback per l'esercizio specificato, ordinati per data decrescente
-    const feedbacks = db.prepare(`
-      SELECT 
-        F.cod,
-        F.messaggio,
-        F.data,
-        F.id_paziente
-      FROM Feedback F
-      WHERE F.id_esercizio = ?
-      ORDER BY F.data DESC
-    `).all(exerciseId) as any[];
+    await connectToDatabase();
 
-    // Restituisce l'array dei feedback come risposta JSON
+    const exercise = await resolveExerciseByExternalId(exerciseId);
+    if (!exercise) {
+      return NextResponse.json(
+        { error: 'Esercizio non trovato' },
+        { status: 404 }
+      );
+    }
+
+    const feedback = exercise.feedback?.messaggio
+      ? [{
+          cod: externalIdFromUnknown(exercise.feedback._id),
+          messaggio: exercise.feedback.messaggio,
+          data: exercise.feedback.data
+            ? new Date(exercise.feedback.data).toISOString()
+            : new Date().toISOString(),
+          id_paziente: exercise.paziente?.cf || exercise.id_paziente || '',
+          id_esercizio: externalIdFromUnknown(exercise.id ?? exercise._id),
+        }]
+      : [];
+
+    const feedbacks = feedback.sort(
+      (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime()
+    );
+
     return NextResponse.json(feedbacks);
   } catch (error) {
-    // Logga l'errore e restituisce errore 500
     console.error('Errore nel recupero dei feedback:', error);
     return NextResponse.json(
       { error: 'Errore nel recupero dei feedback' },
@@ -61,46 +96,32 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }  // Parametri dinamici dell'URL (id dell'esercizio)
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Estrae l'id dell'esercizio dai parametri dinamici della route
     const { id } = await params;
-    // Converte l'id da stringa a numero intero
     const exerciseId = parseInt(id);
 
-    // Validazione: verifica che l'id sia un numero valido
     if (isNaN(exerciseId)) {
-      // Restituisce errore 400 se l'ID non è un numero valido
       return NextResponse.json(
         { error: 'ID esercizio non valido' },
         { status: 400 }
       );
     }
 
-    // Legge il corpo della richiesta JSON
+    await connectToDatabase();
+
     const body = await request.json();
-    // Estrae il campo 'messaggio' dal body
     const { messaggio } = body;
 
-    // Validazione: verifica che il messaggio non sia vuoto o composto solo da spazi
     if (!messaggio || !messaggio.trim()) {
-      // Restituisce errore 400 se il messaggio è mancante o vuoto
       return NextResponse.json(
         { error: 'Il messaggio è obbligatorio' },
         { status: 400 }
       );
     }
 
-    // Recupera il codice fiscale del paziente associato all'esercizio
-    // Il paziente viene determinato automaticamente dal record dell'esercizio nel database
-    const exercise = db.prepare(`
-      SELECT id_paziente 
-      FROM Esercizio 
-      WHERE id = ?
-    `).get(exerciseId) as any;
-
-    // Se l'esercizio non esiste nel database, restituisce errore 404
+    const exercise = await resolveExerciseByExternalId(exerciseId);
     if (!exercise) {
       return NextResponse.json(
         { error: 'Esercizio non trovato' },
@@ -108,24 +129,35 @@ export async function POST(
       );
     }
 
-    // Inserisce il nuovo feedback nel database con il messaggio, il paziente e l'esercizio associato
-    // La data viene impostata automaticamente dal DEFAULT CURRENT_TIMESTAMP dello schema
-    const result = db.prepare(`
-      INSERT INTO Feedback (messaggio, id_paziente, id_esercizio)
-      VALUES (?, ?, ?)
-    `).run(messaggio, exercise.id_paziente, exerciseId);
+    await Esercizio.updateOne(
+      { _id: exercise._id },
+      {
+        $set: {
+          feedback: {
+            messaggio: messaggio.trim(),
+            data: new Date(),
+          },
+        },
+      }
+    );
 
-    // Recupera il feedback appena creato usando l'ID dell'ultimo inserimento
-    const newFeedback = db.prepare(`
-      SELECT cod, messaggio, data, id_paziente, id_esercizio
-      FROM Feedback
-      WHERE cod = ?
-    `).get(result.lastInsertRowid) as any;
+    const updatedExercise = await Esercizio.findById(exercise._id)
+      .select('_id id feedback id_paziente paziente')
+      .populate({ path: 'paziente', select: 'cf' })
+      .lean<any>();
 
-    // Restituisce il feedback creato con stato 201 (Created)
+    const newFeedback = {
+      cod: externalIdFromUnknown(updatedExercise?.feedback?._id),
+      messaggio: updatedExercise?.feedback?.messaggio || messaggio.trim(),
+      data: updatedExercise?.feedback?.data
+        ? new Date(updatedExercise.feedback.data).toISOString()
+        : new Date().toISOString(),
+      id_paziente: updatedExercise?.paziente?.cf || updatedExercise?.id_paziente || '',
+      id_esercizio: externalIdFromUnknown(updatedExercise?.id ?? updatedExercise?._id),
+    };
+
     return NextResponse.json(newFeedback, { status: 201 });
   } catch (error) {
-    // Logga l'errore e restituisce errore 500
     console.error('Errore nella creazione del feedback:', error);
     return NextResponse.json(
       { error: 'Errore nella creazione del feedback' },

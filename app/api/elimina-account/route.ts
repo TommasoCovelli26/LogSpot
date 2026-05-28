@@ -1,12 +1,8 @@
-// Importa la libreria better-sqlite3 per interagire con il database SQLite
-import Database from "better-sqlite3";
 // Importa NextResponse da Next.js per costruire risposte HTTP nelle API route
 import { NextResponse } from "next/server";
-// Importa il modulo 'path' di Node.js per costruire percorsi di file cross-platform
-import path from "path";
-
-// Crea un'istanza del database SQLite con il percorso al file database.db
-const db = new Database(path.join(process.cwd(), "app/data/database.db"));
+import connectToDatabase from "@/lib/mongodb";
+import Logopedista from "@/models/Logopedista";
+import Paziente from "@/models/Paziente";
 
 /**
  * Handler DELETE per l'endpoint /api/elimina-account
@@ -17,6 +13,8 @@ const db = new Database(path.join(process.cwd(), "app/data/database.db"));
  */
 export async function DELETE(req: Request) {
   try {
+    await connectToDatabase();
+
     // Estrae email e ruolo dal corpo della richiesta JSON
     const { email, ruolo } = await req.json();
 
@@ -29,27 +27,23 @@ export async function DELETE(req: Request) {
       );
     }
 
-    // Variabile per memorizzare il risultato dell'operazione DELETE
-    let result;
+    // Variabile per memorizzare il numero di record eliminati
+    let deletedCount = 0;
 
     // Se il ruolo è 'logopedista', elimina il record dalla tabella Logopedista
     if (ruolo === "logopedista") {
-      // Elimina il logopedista con l'email specificata
-      result = db
-        .prepare("DELETE FROM Logopedista WHERE email = ?")
-        .run(email);
+      const result = await Logopedista.deleteOne({ email });
+      deletedCount = result.deletedCount ?? 0;
     }
 
     // Se il ruolo è 'paziente', elimina il record dalla tabella Paziente
     if (ruolo === "paziente") {
-      // Elimina il paziente con l'email specificata
-      result = db
-        .prepare("DELETE FROM Paziente WHERE email = ?")
-        .run(email);
+      const result = await Paziente.deleteOne({ email });
+      deletedCount = result.deletedCount ?? 0;
     }
 
-    // Verifica se l'eliminazione è avvenuta: se result è undefined o nessuna riga è stata modificata
-    if (!result || result.changes === 0) {
+    // Verifica se l'eliminazione è avvenuta
+    if (deletedCount === 0) {
       // Restituisce errore 404 (Not Found) se l'utente non è stato trovato nel database
       return NextResponse.json(
         { error: "Utente non trovato" },

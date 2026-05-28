@@ -1,12 +1,7 @@
-// Importa NextResponse da Next.js per costruire risposte HTTP nelle API route
 import { NextResponse } from "next/server";
-// Importa la libreria better-sqlite3 per interagire con il database SQLite
-import Database from "better-sqlite3";
-// Importa il modulo 'path' di Node.js per costruire percorsi di file cross-platform
-import path from "path";
-
-// Costruisce il percorso assoluto al file del database SQLite
-const dbPath = path.join(process.cwd(), "app/data/database.db");
+import connectToDatabase from "@/lib/mongodb";
+import Logopedista from "@/models/Logopedista";
+import Paziente from "@/models/Paziente";
 
 /**
  * Handler POST per l'endpoint /api/registrazione
@@ -15,19 +10,19 @@ const dbPath = path.join(process.cwd(), "app/data/database.db");
  */
 export async function POST(req: Request) {
   try {
-    // Estrae tutti i campi dal corpo della richiesta JSON
+    await connectToDatabase();
+
     const {
-      ruolo,         // Ruolo dell'utente: 'logopedista' o 'paziente'
-      nome,          // Nome dell'utente
-      cognome,       // Cognome dell'utente
-      dataNascita,   // Data di nascita dell'utente
-      numTelefono,   // Numero di telefono dell'utente
-      email,         // Indirizzo email dell'utente
-      password,      // Password scelta dall'utente
-      codice,        // Codice identificativo: P.IVA per logopedista, CF per paziente
+      ruolo,
+      nome,
+      cognome,
+      dataNascita,
+      numTelefono,
+      email,
+      password,
+      codice,
     } = await req.json();
 
-    // Validazione: verifica che tutti i campi obbligatori siano presenti
     if (
       !ruolo ||
       !nome ||
@@ -38,77 +33,54 @@ export async function POST(req: Request) {
       !password ||
       !codice
     ) {
-      // Restituisce errore 400 (Bad Request) se manca almeno un campo
       return NextResponse.json(
         { error: "Tutti i campi sono obbligatori" },
         { status: 400 }
       );
     }
 
-    // Apre una connessione al database SQLite
-    const db = new Database(dbPath);
+    const existingUser = await Promise.all([
+      Logopedista.findOne({ email }).select("_id").lean(),
+      Paziente.findOne({ email }).select("_id").lean(),
+    ]);
 
-    // Controlla se l'email è già registrata nella tabella Logopedista o Paziente
-    const existingUser =
-      db.prepare("SELECT email FROM Logopedista WHERE email = ?").get(email) ||
-      db.prepare("SELECT email FROM Paziente WHERE email = ?").get(email);
-
-    // Se l'email è già in uso, restituisce errore 409 (Conflict)
-    if (existingUser) {
+    if (existingUser[0] || existingUser[1]) {
       return NextResponse.json(
         { error: "Email già registrata" },
         { status: 409 }
       );
     }
 
-    // Se il ruolo è 'logopedista', inserisce un nuovo record nella tabella Logopedista
     if (ruolo === "logopedista") {
-      db.prepare(
-        `
-        INSERT INTO Logopedista
-        (pIva, nome, cognome, dataNascita, numTelefono, email, password)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        `
-      ).run(
-        codice,        // P.IVA del logopedista (usata come chiave primaria)
-        nome,          // Nome del logopedista
-        cognome,       // Cognome del logopedista
-        dataNascita,   // Data di nascita
-        numTelefono,   // Numero di telefono
-        email,         // Email univoca
-        password       // Password dell'account
-      );
+      await Logopedista.create({
+        pIva: codice,
+        nome,
+        cognome,
+        dataNascita: dataNascita || null,
+        numTelefono: numTelefono || null,
+        email,
+        password,
+      });
     } else if (ruolo === "paziente") {
-      // Se il ruolo è 'paziente', inserisce un nuovo record nella tabella Paziente
-      db.prepare(
-        `
-        INSERT INTO Paziente
-        (cf, nome, cognome, dataNascita, numTelefono, email, password)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        `
-      ).run(
-        codice,        // Codice fiscale del paziente (usato come chiave primaria)
-        nome,          // Nome del paziente
-        cognome,       // Cognome del paziente
-        dataNascita,   // Data di nascita
-        numTelefono,   // Numero di telefono
-        email,         // Email univoca
-        password       // Password dell'account
-      );
+      await Paziente.create({
+        cf: codice,
+        nome,
+        cognome,
+        dataNascita: dataNascita || null,
+        numTelefono: numTelefono || null,
+        email,
+        password,
+      });
     } else {
-      // Se il ruolo non è né 'logopedista' né 'paziente', restituisce errore 400
       return NextResponse.json(
         { error: "Ruolo non valido" },
         { status: 400 }
       );
     }
 
-    // Se tutto è andato a buon fine, restituisce un messaggio di successo
     return NextResponse.json({ message: "Registrazione avvenuta con successo" });
   } catch (error) {
-    // Logga l'errore nella console per il debug
     console.error("Errore registrazione:", error);
-    // Restituisce errore 500 (Internal Server Error) in caso di eccezione
     return NextResponse.json(
       { error: "Errore del server" },
       { status: 500 }

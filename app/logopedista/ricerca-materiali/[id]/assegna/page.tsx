@@ -12,8 +12,7 @@ import { lusitana } from '../../../../ui/fonts';
 import AssignToPatient from './AssignToPatient';
 // Importa la funzione cookies per accedere ai cookie HTTP lato server
 import { cookies } from 'next/headers';
-// Importa l'istanza del database SQLite per query dirette
-import { db } from '@/lib/db';
+import { fetchPatients } from '@/lib/patients';
 
 /**
  * Pagina di assegnazione di un'attività pubblica a un paziente.
@@ -45,13 +44,8 @@ export default async function AssignPage({
      logopedistaId = userData.utente?.pIva || '';
   }
 
-  // Query al database: recupera i pazienti associati al logopedista
-  // Seleziona cf, nome e cognome dalla tabella Paziente filtrata per id_logopedista
-  const patients = db.prepare(`
-    SELECT cf, nome, cognome 
-    FROM Paziente 
-    WHERE id_logopedista = ?
-  `).all(logopedistaId) as any[];
+  // Recupera i pazienti tramite il layer MongoDB
+  const patients = await fetchPatients(logopedistaId);
 
   return (
     // Container principale: sfondo bianco, padding responsivo

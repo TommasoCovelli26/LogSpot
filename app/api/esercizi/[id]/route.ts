@@ -1,12 +1,40 @@
-// Importa NextResponse da Next.js per costruire risposte HTTP nelle API route
 import { NextResponse } from 'next/server';
-// Importa la libreria better-sqlite3 per interagire con il database SQLite
-import Database from 'better-sqlite3';
-// Importa il modulo 'path' di Node.js per costruire percorsi di file cross-platform
-import path from 'path';
+import mongoose from 'mongoose';
+import connectToDatabase from '@/lib/mongodb';
+import Esercizio from '@/models/Esercizio';
 
-// Costruisce il percorso assoluto al file del database SQLite
-const dbPath = path.join(process.cwd(), 'app/data/database.db');
+function externalIdFromUnknown(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) return parsed;
+    if (mongoose.isValidObjectId(value)) return Number.parseInt(value.slice(-8), 16);
+  }
+  if (value instanceof mongoose.Types.ObjectId) {
+    return Number.parseInt(value.toString().slice(-8), 16);
+  }
+  return 0;
+}
+
+function buildExerciseClauses(id: string): any[] {
+  const clauses: any[] = [];
+  const numeric = Number.parseInt(id, 10);
+  if (Number.isFinite(numeric)) clauses.push({ id: numeric });
+  if (mongoose.isValidObjectId(id)) clauses.push({ _id: new mongoose.Types.ObjectId(id) });
+  return clauses;
+}
+
+function normalizeImage(value: unknown): string {
+  if (!value) return '';
+  if (Array.isArray(value)) return value.map((v) => String(v)).filter(Boolean).join('|');
+  return String(value);
+}
+
+function normalizePathologies(value: unknown): string {
+  if (!value) return '';
+  if (Array.isArray(value)) return value.map((v) => String(v)).filter(Boolean).join(',');
+  return String(value);
+}
 
 /**
  * Handler GET per l'endpoint /api/esercizi/[id]
@@ -15,39 +43,32 @@ const dbPath = path.join(process.cwd(), 'app/data/database.db');
  */
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }  // Parametri dinamici dell'URL (id dell'esercizio)
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Estrae l'id dell'esercizio dai parametri dinamici della route (await perché è una Promise)
     const { id } = await params;
+    await connectToDatabase();
 
-    // Apre una connessione al database SQLite
-    const db = new Database(dbPath);
+    const clauses = buildExerciseClauses(id);
+    if (clauses.length === 0) {
+      return NextResponse.json({ error: 'Esercizio non trovato' }, { status: 404 });
+    }
 
-    // Prepara la query SQL: seleziona i dettagli dell'esercizio con INNER JOIN su Attivita
-    // per ottenere anche titolo, descrizione, istruzioni, immagine, fasciaEta e patologie dell'attività
-    const stmt = db.prepare(`
-      SELECT 
-        E.id,
-        E.dataAssegnazione,
-        E.statoCompletamento,
-        E.durata,
-        E.esito,
-        A.titolo,
-        A.descrizione,
-        A.istruzioni,
-        A.immagine,
-        A.fasciaEta,
-        A.patologie
-      FROM Esercizio E
-      INNER JOIN Attivita A ON E.id_attivita = A.cod
-      WHERE E.id = ?
-    `);
+    let exercise = await Esercizio.findOne({ $or: clauses })
+      .populate({ path: 'attivita', select: 'titolo descrizione istruzioni immagini immagine fasciaEta patologie cod _id' })
+      .lean<any>();
 
-    // Esegue la query e recupera il singolo risultato (get restituisce una sola riga)
-    const exercise = stmt.get(id);
+    if (!exercise) {
+      const all = await Esercizio.find({})
+        .populate({ path: 'attivita', select: 'titolo descrizione istruzioni immagini immagine fasciaEta patologie cod _id' })
+        .lean<any[]>();
 
-    // Se l'esercizio non è stato trovato, restituisce errore 404
+      const externalId = Number.parseInt(id, 10);
+      if (Number.isFinite(externalId)) {
+        exercise = all.find((item) => externalIdFromUnknown(item.id ?? item._id) === externalId) || null;
+      }
+    }
+
     if (!exercise) {
       return NextResponse.json(
         { error: 'Esercizio non trovato' },
@@ -55,10 +76,24 @@ export async function GET(
       );
     }
 
-    // Restituisce i dettagli dell'esercizio come risposta JSON
-    return NextResponse.json(exercise);
+    const activity = exercise.attivita || {};
+
+    return NextResponse.json({
+      id: externalIdFromUnknown(exercise.id ?? exercise._id),
+      dataAssegnazione: exercise.dataAssegnazione
+        ? new Date(exercise.dataAssegnazione).toISOString()
+        : null,
+      statoCompletamento: exercise.statoCompletamento ?? null,
+      durata: exercise.durata ?? null,
+      esito: exercise.esito ?? null,
+      titolo: activity.titolo || '',
+      descrizione: activity.descrizione || '',
+      istruzioni: activity.istruzioni || '',
+      immagine: normalizeImage(activity.immagini ?? activity.immagine),
+      fasciaEta: Number(activity.fasciaEta || 0),
+      patologie: normalizePathologies(activity.patologie),
+    });
   } catch (error) {
-    // Logga l'errore e restituisce errore 500
     console.error('Database Error:', error);
     return NextResponse.json(
       { error: 'Errore nel recupero dell\'esercizio' },
@@ -74,69 +109,58 @@ export async function GET(
  */
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }  // Parametri dinamici dell'URL (id dell'esercizio)
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Estrae l'id dell'esercizio dai parametri dinamici della route
     const { id } = await params;
-    // Legge il corpo della richiesta JSON contenente i campi da aggiornare
+    await connectToDatabase();
+
     const body = await request.json();
-    // Array per accumulare le clausole SET della query UPDATE
-    const updates: string[] = [];
-    // Array per accumulare i valori dei parametri della query
-    const paramsList: Array<string | number | null> = [];
+    const updates: Record<string, unknown> = {};
 
-    // Se il body contiene il campo 'statoCompletamento', lo aggiunge alla lista degli aggiornamenti
     if (Object.prototype.hasOwnProperty.call(body, 'statoCompletamento')) {
-      updates.push('statoCompletamento = ?');
-      // Usa il valore fornito o null se non definito
-      paramsList.push(body.statoCompletamento ?? null);
+      updates.statoCompletamento = body.statoCompletamento ?? null;
     }
 
-    // Se il body contiene il campo 'durata', lo aggiunge alla lista degli aggiornamenti
     if (Object.prototype.hasOwnProperty.call(body, 'durata')) {
-      updates.push('durata = ?');
-      // Usa il valore fornito o null se non definito
-      paramsList.push(body.durata ?? null);
+      updates.durata = body.durata ?? null;
     }
 
-    // Se nessun campo valido è stato fornito, restituisce errore 400
-    if (updates.length === 0) {
+    if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         { error: 'Nessun campo da aggiornare' },
         { status: 400 }
       );
     }
 
-    // Apre una connessione al database SQLite
-    const db = new Database(dbPath);
+    const clauses = buildExerciseClauses(id);
+    let updateResult = clauses.length
+      ? await Esercizio.updateOne({ $or: clauses }, { $set: updates })
+      : { matchedCount: 0 };
 
-    // Costruisce e prepara la query UPDATE dinamica con le clausole SET accumulate
-    // Le clausole vengono unite con virgola e l'id viene aggiunto come ultimo parametro per il WHERE
-    const stmt = db.prepare(`
-      UPDATE Esercizio
-      SET ${updates.join(', ')}
-      WHERE id = ?
-    `);
+    if (updateResult.matchedCount === 0) {
+      const numericId = Number.parseInt(id, 10);
+      if (Number.isFinite(numericId)) {
+        const candidates = await Esercizio.find({}).select('_id id').lean<any[]>();
+        const target = candidates.find((item) => externalIdFromUnknown(item.id ?? item._id) === numericId);
+        if (target?._id) {
+          updateResult = await Esercizio.updateOne({ _id: target._id }, { $set: updates });
+        }
+      }
+    }
 
-    // Esegue la query con i parametri (valori da aggiornare + id dell'esercizio)
-    const result = stmt.run(...paramsList, id);
-
-    // Se nessuna riga è stata aggiornata, l'esercizio non esiste
-    if (result.changes === 0) {
+    if (updateResult.matchedCount === 0) {
       return NextResponse.json(
         { error: 'Esercizio non trovato' },
         { status: 404 }
       );
     }
 
-    // Restituisce successo con messaggio informativo
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true,
-      message: 'Stato aggiornato con successo' 
+      message: 'Stato aggiornato con successo'
     });
   } catch (error) {
-    // Logga l'errore e restituisce errore 500
     console.error('Database Error:', error);
     return NextResponse.json(
       { error: 'Errore nell\'aggiornamento dello stato' },

@@ -1,7 +1,21 @@
-// Importa l'istanza del database SQLite dal modulo db locale
-import { db } from '@/lib/db';
-// Importa NextRequest e NextResponse da Next.js per gestire richieste e risposte HTTP
 import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
+import connectToDatabase from '@/lib/mongodb';
+import Esercizio from '@/models/Esercizio';
+import Logopedista from '@/models/Logopedista';
+
+function externalIdFromUnknown(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isFinite(parsed)) return parsed;
+    if (mongoose.isValidObjectId(value)) return Number.parseInt(value.slice(-8), 16);
+  }
+  if (value instanceof mongoose.Types.ObjectId) {
+    return Number.parseInt(value.toString().slice(-8), 16);
+  }
+  return 0;
+}
 
 /**
  * Handler GET per l'endpoint /api/feedback
@@ -12,48 +26,53 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Accede ai parametri della query string dalla richiesta
     const searchParams = request.nextUrl.searchParams;
-    // Legge la P.IVA del logopedista dalla query string
     const pIva = searchParams.get('pIva');
 
-    // Validazione: verifica che la P.IVA sia presente nella query string
     if (!pIva) {
-      // Restituisce errore 400 se la P.IVA non è stata fornita
       return NextResponse.json(
         { error: 'pIva non fornita' },
         { status: 400 }
       );
     }
 
-    // Query SQL con multi-JOIN per recuperare tutti i feedback degli esercizi assegnati dal logopedista:
-    // - Feedback F: dati del feedback (messaggio, data, paziente)
-    // - Esercizio E: collega il feedback all'esercizio e determina il logopedista assegnante
-    // - Attivita A: fornisce il titolo dell'attività/esercizio
-    // - Paziente P: fornisce nome e cognome del paziente autore del feedback
-    // Filtra per il logopedista specificato e ordina per data decrescente
-    const feedbacks = db.prepare(`
-      SELECT 
-        F.cod,
-        F.messaggio,
-        F.data,
-        F.id_paziente,
-        F.id_esercizio,
-        A.titolo as titolo_esercizio,
-        P.cognome as cognome_paziente,
-        P.nome as nome_paziente
-      FROM Feedback F
-      JOIN Esercizio E ON F.id_esercizio = E.id
-      JOIN Attivita A ON E.id_attivita = A.cod
-      JOIN Paziente P ON F.id_paziente = P.cf
-      WHERE E.id_logopedista = ?
-      ORDER BY F.data DESC
-    `).all(pIva) as any[];
+    await connectToDatabase();
 
-    // Restituisce l'array dei feedback arricchiti come risposta JSON
+    const logopedista = await Logopedista.findOne({ pIva }).select('_id').lean();
+
+    const orClauses: any[] = [];
+    if (logopedista?._id) orClauses.push({ logopedista: logopedista._id });
+    orClauses.push({ id_logopedista: pIva });
+
+    const exercises = await Esercizio.find({
+      $or: orClauses,
+    })
+      .populate({ path: 'attivita', select: 'titolo' })
+      .populate({ path: 'paziente', select: 'cf nome cognome' })
+      .select('id feedback id_paziente attivita paziente')
+      .lean<any[]>();
+
+    const feedbacks = exercises
+      .filter((exercise) => exercise.feedback?.messaggio)
+      .map((exercise) => ({
+        cod: externalIdFromUnknown(exercise.feedback?._id),
+        messaggio: exercise.feedback?.messaggio || '',
+        data: exercise.feedback?.data
+          ? new Date(exercise.feedback.data).toISOString()
+          : new Date().toISOString(),
+        id_paziente: exercise.paziente?.cf || exercise.id_paziente || '',
+        id_esercizio: externalIdFromUnknown(exercise.id ?? exercise._id),
+        titolo_esercizio: exercise.attivita?.titolo || '',
+        cognome_paziente: exercise.paziente?.cognome || '',
+        nome_paziente: exercise.paziente?.nome || '',
+      }))
+      .sort(
+        (a, b) =>
+          new Date(b.data).getTime() - new Date(a.data).getTime()
+      );
+
     return NextResponse.json(feedbacks);
   } catch (error) {
-    // Logga l'errore e restituisce errore 500
     console.error('Errore nel recupero dei feedback:', error);
     return NextResponse.json(
       { error: 'Errore nel recupero dei feedback' },
